@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Local dashboard and user-selected export folder",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

@@ -1,0 +1,7 @@
+[package]
+name = "trace-metrics"
+version.workspace = true
+edition.workspace = true
+[dependencies]
+trace-core = { path = "../trace-core" }
+

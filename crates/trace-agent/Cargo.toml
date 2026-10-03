@@ -1,0 +1,15 @@
+[package]
+name = "trace-agent"
+version.workspace = true
+edition.workspace = true
+[dependencies]
+trace-core = { path = "../trace-core" }
+trace-metrics = { path = "../trace-metrics" }
+trace-storage = { path = "../trace-storage" }
+trace-ipc = { path = "../trace-ipc" }
+anyhow.workspace = true
+serde_json.workspace = true
+crossbeam-queue = "0.3"
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+

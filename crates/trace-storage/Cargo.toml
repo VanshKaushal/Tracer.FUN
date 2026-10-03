@@ -1,0 +1,16 @@
+[package]
+name = "trace-storage"
+version.workspace = true
+edition.workspace = true
+[dependencies]
+trace-core = { path = "../trace-core" }
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+anyhow.workspace = true
+rusqlite.workspace = true
+csv = "1"
+[dev-dependencies]
+trace-metrics = { path = "../trace-metrics" }
+tempfile = "3"
+

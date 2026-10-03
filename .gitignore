@@ -1,0 +1,14 @@
+/target/
+/node_modules/
+/.npm-cache/
+/.browser-cache/
+/apps/desktop/dist/
+/apps/desktop/src-tauri/binaries/
+*.db
+*.db-shm
+*.db-wal
+*.log
+/test-results/
+/dist/
+/.trace-smoke-*/
+

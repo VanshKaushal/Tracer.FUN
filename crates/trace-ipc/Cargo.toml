@@ -1,0 +1,13 @@
+[package]
+name = "trace-ipc"
+version.workspace = true
+edition.workspace = true
+[dependencies]
+trace-core = { path = "../trace-core" }
+trace-storage = { path = "../trace-storage" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+

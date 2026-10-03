@@ -1,0 +1,22 @@
+[package]
+name = "trace-desktop"
+version.workspace = true
+edition.workspace = true
+build = "build.rs"
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+[[bin]]
+name = "trace"
+path = "src/main.rs"
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+trace-ipc = { path = "../../../crates/trace-ipc" }
+serde_json.workspace = true
+anyhow.workspace = true
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+

@@ -1,0 +1,87 @@
+export type Stats = {
+  active_ms: number;
+  idle_ms: number;
+  distance_px: number;
+  movement_samples: number;
+  left_clicks: number;
+  right_clicks: number;
+  middle_clicks: number;
+  double_clicks: number;
+  drag_count: number;
+  drag_distance_px: number;
+  drag_duration_ms: number;
+  scroll_delta: number;
+  horizontal_scroll_delta: number;
+  scroll_abs_delta: number;
+  scroll_events: number;
+  scroll_bursts: number;
+  direction_changes: number;
+  session_count: number;
+  speed_sum: number;
+  speed_count: number;
+  max_speed: number;
+  speed_histogram: number[];
+  efficiency_sum: number;
+  efficiency_count: number;
+};
+export type Session = {
+  id: number;
+  start_ts: number;
+  end_ts: number | null;
+  stats: Stats;
+};
+export type Monitor = {
+  monitor_id: number;
+  device_name: string;
+  width: number;
+  height: number;
+  dpi_x: number;
+  dpi_y: number;
+};
+export type HeatCell = {
+  monitor_id: number;
+  grid_x: number;
+  grid_y: number;
+  dwell_ms: number;
+  left_clicks: number;
+  right_clicks: number;
+  middle_clicks: number;
+  scroll_count: number;
+  drag_count: number;
+};
+export type Dashboard = {
+  daily: { date: string; stats: Stats }[];
+  timeline: { timestamp: number; stats: Stats }[];
+  sessions: Session[];
+  heatmap: HeatCell[];
+  monitors: Monitor[];
+  baseline: Stats;
+  baseline_days: number;
+  weekly: Stats;
+  weekly_range: Range;
+  records: { metric: string; date: string; value: number; unit: string }[];
+  deviations: { metric: string; standard_deviations: number }[];
+};
+export type Settings = {
+  launch_at_login: boolean;
+  tracking_enabled: boolean;
+  idle_threshold_seconds: number;
+  raw_retention_hours: number;
+  minute_retention_days: number;
+  theme: string;
+  accent_color: string;
+  distance_unit: string;
+  application_tracking_enabled: boolean;
+  onboarding_complete: boolean;
+};
+export type Status = {
+  tracking: boolean;
+  idle: boolean;
+  paused: boolean;
+  paused_until: number | null;
+  dropped_moves: number;
+  queue_overflows: number;
+  storage_error: string | null;
+  current_session: Session | null;
+};
+export type Range = { start: string; end: string };
