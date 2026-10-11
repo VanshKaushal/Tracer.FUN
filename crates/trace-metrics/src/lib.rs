@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 use trace_core::*;
+mod insights;
+pub use insights::InsightState;
 
 pub fn distance(a: (i32, i32), b: (i32, i32)) -> f64 {
     (b.0 as f64 - a.0 as f64).hypot(b.1 as f64 - a.1 as f64)
@@ -22,6 +24,11 @@ pub struct Engine {
     pub pending: Batch,
     pub current: Option<Session>,
     pub paused: bool,
+    pub incognito: bool,
+    pub today: Stats,
+    pub today_day: i64,
+    pub focus: Option<FocusSession>,
+    pub completed_focus: Option<FocusSession>,
     last_tick: i64,
     last_interaction: Option<i64>,
     anchor: Option<PointerEvent>,
@@ -45,6 +52,11 @@ impl Engine {
             pending: Batch::default(),
             current: None,
             paused: false,
+            incognito: false,
+            today: Stats::default(),
+            today_day: day_at(now),
+            focus: None,
+            completed_focus: None,
             last_tick: now,
             last_interaction: None,
             anchor: None,
@@ -70,6 +82,17 @@ impl Engine {
     }
     fn record(&mut self, ts: i64, s: Stats) {
         let (minute, _, day) = self.buckets(ts);
+        if day > self.today_day {
+            self.today = Stats::default();
+            self.today_day = day;
+        }
+        if day == self.today_day {
+            self.today.merge(&s);
+        }
+        if let Some(focus) = &mut self.focus {
+            focus.stats.merge(&s);
+            focus.updated_ts = ts + s.active_ms + s.idle_ms;
+        }
         self.pending.minutes.entry(minute).or_default().merge(&s);
         if let Some(session) = &mut self.current {
             session.stats.merge(&s);
@@ -122,12 +145,17 @@ impl Engine {
         self.paused = paused;
     }
     pub fn tick(&mut self, now: i64) {
+        let day = self.buckets(now).2;
+        if day != self.today_day {
+            self.today = Stats::default();
+            self.today_day = day;
+        }
         // Wall-clock jumps and suspend must never create artificial hours or distance.
         if now < self.last_tick || now - self.last_tick > 5000 {
             self.resume_after_gap(now);
             return;
         }
-        if self.paused || !self.settings.tracking_enabled {
+        if self.paused || self.incognito || !self.settings.tracking_enabled {
             self.last_tick = now;
             return;
         }
@@ -172,7 +200,7 @@ impl Engine {
         // Events may spend a few milliseconds in the input queue after a timer tick.
         e.timestamp_ms = e.timestamp_ms.max(self.last_tick);
         self.tick(e.timestamp_ms);
-        if self.paused || !self.settings.tracking_enabled {
+        if self.paused || self.incognito || !self.settings.tracking_enabled {
             return;
         }
         if self.current.is_none() {
@@ -351,6 +379,9 @@ impl Engine {
         self.record(e.timestamp_ms, s);
     }
     pub fn checkpoint(&mut self) {
+        if let Some(f) = &self.focus {
+            self.pending.focus_sessions.insert(f.id, f.clone());
+        }
         if let Some(s) = &self.current {
             self.pending.sessions.insert(s.id, s.clone());
         }
@@ -361,15 +392,58 @@ impl Engine {
             ..Batch::default()
         };
     }
+    pub fn start_focus(&mut self, id: i64, now: i64) -> anyhow::Result<()> {
+        anyhow::ensure!(self.focus.is_none(), "A focus session is already active");
+        anyhow::ensure!(
+            self.settings.tracking_enabled
+                && !self.paused
+                && !self.incognito
+                && self.settings.trace_bar.focus_mode,
+            "Enable tracking and leave privacy mode before starting focus"
+        );
+        self.tick(now);
+        self.focus = Some(FocusSession {
+            id,
+            start_ts: now,
+            end_ts: None,
+            updated_ts: now,
+            stats: Stats::default(),
+            context_switches: None,
+        });
+        self.completed_focus = None;
+        self.checkpoint();
+        Ok(())
+    }
+    pub fn end_focus(&mut self, now: i64) -> Option<FocusSession> {
+        self.tick(now);
+        let mut focus = self.focus.take()?;
+        focus.end_ts = Some(now.max(focus.start_ts));
+        focus.updated_ts = now;
+        self.pending.focus_sessions.insert(focus.id, focus.clone());
+        self.completed_focus = Some(focus.clone());
+        Some(focus)
+    }
+    pub fn set_incognito(&mut self, enabled: bool, now: i64) {
+        if self.incognito == enabled {
+            return;
+        }
+        self.suspend(now);
+        if enabled {
+            self.end_focus(now);
+        }
+        self.incognito = enabled;
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     fn engine(now: i64) -> Engine {
-        let mut s = Settings::default();
-        s.tracking_enabled = true;
-        s.idle_threshold_seconds = 60;
+        let s = Settings {
+            tracking_enabled: true,
+            idle_threshold_seconds: 60,
+            ..Default::default()
+        };
         Engine::new(
             s,
             vec![Monitor {
@@ -464,6 +538,35 @@ mod tests {
         e.set_paused(true, 61000);
         e.process(event(62000, -500, 10, EventType::Move), 500, (4, 4));
         assert_eq!(totals(&e).active_ms, 2000);
+    }
+    #[test]
+    fn focus_counts_only_new_activity_and_incognito_ignores_events() {
+        let mut e = engine(0);
+        e.process(event(0, -100, 10, EventType::Move), 500, (4, 4));
+        e.process(event(100, -90, 10, EventType::Move), 500, (4, 4));
+        e.start_focus(1, 100).unwrap();
+        assert!(e.start_focus(2, 100).is_err());
+        e.process(event(200, -80, 10, EventType::Move), 500, (4, 4));
+        e.set_paused(true, 300);
+        e.process(event(400, -10, 10, EventType::Move), 500, (4, 4));
+        assert_eq!(e.focus.as_ref().unwrap().stats.distance_px, 10.);
+        e.set_paused(false, 500);
+        e.process(event(600, -80, 10, EventType::Move), 500, (4, 4));
+        e.process(event(700, -75, 10, EventType::Move), 500, (4, 4));
+        e.set_incognito(true, 800);
+        let before = totals(&e);
+        let session_count = before.session_count;
+        assert!(e.focus.is_none());
+        assert_eq!(e.completed_focus.as_ref().unwrap().stats.distance_px, 15.);
+        for t in 801..1000 {
+            e.process(event(t, -1, 10, EventType::Move), 500, (4, 4));
+        }
+        assert_eq!(totals(&e).distance_px, before.distance_px);
+        assert_eq!(totals(&e).active_ms, before.active_ms);
+        e.set_incognito(false, 1000);
+        e.process(event(1100, -1, 10, EventType::Move), 500, (4, 4));
+        assert_eq!(totals(&e).distance_px, before.distance_px);
+        assert_eq!(totals(&e).session_count, session_count + 1);
     }
     #[test]
     fn sleep_clock_jump_and_efficiency() {

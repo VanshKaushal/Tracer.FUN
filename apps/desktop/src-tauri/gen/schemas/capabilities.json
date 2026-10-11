@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Local dashboard and user-selected export folder","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open"]}}
+{"default":{"identifier":"default","description":"Local dashboard and user-selected export folder","local":true,"windows":["main","trace-bar"],"permissions":["core:default","dialog:allow-open"]}}

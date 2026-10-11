@@ -43,6 +43,12 @@ import {
 } from "./metrics";
 import { call, desktop, localBrowser, exportData, restart } from "./api";
 import { Chart, seriesChart } from "./Chart";
+import { invoke } from "@tauri-apps/api/core";
+import { nativeDesktop } from "./api";
+import { defaultSettings, normalizeSettings } from "./shared/settings";
+import { useLiveStats } from "./shared/live";
+import BarSettingsPanel from "./settings/BarSettingsPanel";
+import FocusPanel from "./FocusPanel";
 
 const navigation = [
   ["/", "Overview", Grid2X2],
@@ -51,6 +57,7 @@ const navigation = [
   ["/clicks", "Clicks", Crosshair],
   ["/heatmap", "Heatmap", Grid2X2],
   ["/sessions", "Sessions", Clock3],
+  ["/focus", "Focus", Crosshair],
   ["/history", "History", History],
   ["/insights", "Insights", Lightbulb],
   ["/settings", "Settings", Settings2],
@@ -67,18 +74,6 @@ const emptyDashboard: Dashboard = {
   weekly_range: dateRange("7 days"),
   records: [],
   deviations: [],
-};
-const defaultSettings: Settings = {
-  launch_at_login: false,
-  tracking_enabled: false,
-  idle_threshold_seconds: 300,
-  raw_retention_hours: 24,
-  minute_retention_days: 30,
-  theme: "dark",
-  accent_color: "#b6e77d",
-  distance_unit: "px",
-  application_tracking_enabled: false,
-  onboarding_complete: false,
 };
 const time = (ts: number) =>
   new Date(ts).toLocaleTimeString(undefined, {
@@ -140,6 +135,7 @@ function Stat({
 }
 
 export default function App() {
+  const { live, unavailable } = useLiveStats();
   const [route, setRoute] = useState(window.location.hash.slice(1) || "/");
   const [preset, setPreset] = useState("Today");
   const [range, setRange] = useState<Range>(dateRange("Today"));
@@ -171,7 +167,7 @@ export default function App() {
         call<Status>("GetStatus"),
       ]);
       if (!settingsLoaded.current) {
-        const s = await call<Settings>("GetSettings");
+        const s = normalizeSettings(await call<Settings>("GetSettings"));
         setSettings(s);
         setDraft(s);
         setHasSettings(true);
@@ -191,6 +187,47 @@ export default function App() {
       if (sequence === refreshSequence.current) setLoading(false);
     }
   }, [range, monitor]);
+  useEffect(() => {
+    if (!live) return;
+    setStatus((previous) => ({
+      ...previous,
+      tracking: live.tracking,
+      paused: live.paused,
+      incognito: live.incognito,
+      paused_until: live.paused_until,
+      idle: !live.session,
+      current_session: live.session,
+      dropped_moves: previous?.dropped_moves ?? 0,
+      queue_overflows: previous?.queue_overflows ?? 0,
+      storage_error: live.storage_error,
+    }));
+    const next = normalizeSettings(live.settings);
+    if (JSON.stringify(next) !== JSON.stringify(settings)) {
+      const changed = Object.fromEntries(
+        Object.entries(next).filter(
+          ([key, value]) =>
+            key !== "trace_bar" &&
+            JSON.stringify(value) !==
+              JSON.stringify(settings[key as keyof Settings]),
+        ),
+      );
+      const barChanged = Object.fromEntries(
+        Object.entries(next.trace_bar).filter(
+          ([key, value]) =>
+            value !== settings.trace_bar[key as keyof typeof next.trace_bar],
+        ),
+      );
+      setSettings(next);
+      setDraft((previous) => ({
+        ...previous,
+        ...changed,
+        trace_bar: { ...previous.trace_bar, ...barChanged },
+      }));
+    }
+  }, [live]);
+  useEffect(() => {
+    if (unavailable) setError(unavailable);
+  }, [unavailable]);
   useEffect(() => {
     const fn = () => setRoute(window.location.hash.slice(1) || "/");
     window.addEventListener("hashchange", fn);
@@ -848,6 +885,12 @@ export default function App() {
           <span className="tag">Not enabled</span>
         </div>
       </Panel>
+      <BarSettingsPanel
+        value={draft.trace_bar}
+        onChange={(trace_bar) =>
+          setDraft((previous) => ({ ...previous, trace_bar }))
+        }
+      />
       <Panel
         title="Display & retention"
         subtitle="Raw pixel distance is always preserved."
@@ -1093,6 +1136,26 @@ export default function App() {
             Workspace <span>/</span> <strong>{title}</strong>
           </span>
           <div className="top-actions">
+            <button
+              className="compact"
+              disabled={!nativeDesktop || !settings.trace_bar.enabled}
+              onClick={() =>
+                void invoke("show_trace_bar").catch((e) => setError(String(e)))
+              }
+            >
+              Trace Bar
+            </button>
+            <button
+              className="compact"
+              disabled={busy || !desktop || !status}
+              onClick={() =>
+                void perform(() =>
+                  call("SetIncognito", { enabled: !status?.incognito }),
+                )
+              }
+            >
+              {status?.incognito ? "Leave incognito" : "Incognito"}
+            </button>
             <span className="tracking-label">
               <i className={`status-dot ${status?.tracking ? "" : "off"}`} />
               {!desktop
@@ -1101,11 +1164,13 @@ export default function App() {
                   ? loading
                     ? "Connecting collector"
                     : "Collector disconnected"
-                  : status?.tracking
-                    ? "Tracking on"
-                    : status?.paused
-                      ? "Paused"
-                      : "Tracking off"}
+                  : status?.incognito
+                    ? "Incognito"
+                    : status?.tracking
+                      ? "Tracking on"
+                      : status?.paused
+                        ? "Paused"
+                        : "Tracking off"}
             </span>
             <div className="pause-wrap">
               <button
@@ -1286,7 +1351,9 @@ export default function App() {
                   onClick={() =>
                     void perform(async () => {
                       await restart();
-                      const s = await call<Settings>("GetSettings");
+                      const s = normalizeSettings(
+                        await call<Settings>("GetSettings"),
+                      );
                       setSettings(s);
                       setDraft(s);
                       setHasSettings(true);
@@ -1327,6 +1394,13 @@ export default function App() {
             </div>
           ) : route === "/settings" ? (
             settingsScreen
+          ) : route === "/focus" ? (
+            <FocusPanel
+              range={range}
+              live={live}
+              settings={settings}
+              dpi={distanceDpi}
+            />
           ) : route === "/sessions" ? (
             sessions
           ) : route === "/history" ? (

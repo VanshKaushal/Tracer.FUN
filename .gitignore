@@ -1,5 +1,6 @@
 /target/
 /node_modules/
+node_modules/
 /.npm-cache/
 /.browser-cache/
 /apps/desktop/dist/
@@ -11,4 +12,5 @@
 /test-results/
 /dist/
 /.trace-smoke-*/
+/.trace-bar-smoke-*/
 

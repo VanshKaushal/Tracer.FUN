@@ -7,6 +7,7 @@
     "dev": "vite --config apps/desktop/vite.config.ts",
     "test:bridge": "node --test scripts/local-collector.test.mjs",
     "test:windows": "node scripts/smoke-windows.mjs",
+    "test:bar": "node scripts/smoke-trace-bar.mjs",
     "status": "node scripts/collector-status.mjs",
     "build": "tsc --noEmit -p apps/desktop/tsconfig.json && vite build --config apps/desktop/vite.config.ts",
     "desktop": "node scripts/run-desktop.mjs dev",
@@ -15,7 +16,7 @@
     "test": "vitest run --config apps/desktop/vite.config.ts",
     "test:rust": "cargo test",
     "test:load": "cargo run --release -p trace-agent -- --simulate",
-    "test:ui": "playwright test"
+    "test:ui": "node scripts/test-ui.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

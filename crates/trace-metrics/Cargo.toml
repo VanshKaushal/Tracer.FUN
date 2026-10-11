@@ -3,5 +3,6 @@ name = "trace-metrics"
 version.workspace = true
 edition.workspace = true
 [dependencies]
+anyhow.workspace = true
 trace-core = { path = "../trace-core" }
 

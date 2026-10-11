@@ -1352,6 +1352,14 @@ td {
   }
 }
 @media (max-width: 520px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 72px;
+    gap: 10px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
   .main main {
     padding: 25px 15px 0;
   }

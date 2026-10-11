@@ -13,6 +13,8 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
 trace-ipc = { path = "../../../crates/trace-ipc" }
+trace-core = { path = "../../../crates/trace-core" }
+serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
 [target.'cfg(windows)'.dependencies]

@@ -1,5 +1,32 @@
 # Validation and release gates
 
+## Trace Bar hover refinement — October 5, 2026
+
+Added backward-compatible hover preferences for timer, clicks, cursor distance, scroll steps and active time. Hover reveals immediately and remains visible under the pointer; leaving collapses after 120 ms when auto-collapse is enabled. Left/right layouts now show the same selectable details as bottom, with adaptive window dimensions and larger values. The clicked expanded view retains its metrics and controls.
+
+Production TypeScript/Vite build, 19 frontend unit tests, 12 Playwright checks, the Windows GNU collector/desktop release build and strict Clippy passed. Three new UI checks verify all five details fit inside left/right/bottom hover bounds and collapse on pointer leave; screenshots were inspected. The updated collector runs successfully with the user's saved tracking consent, docking and distance preferences.
+
+The updated desktop executable was blocked at launch by Windows Application Control (Code Integrity event 3077, OS error 4551). A native Windows build was also blocked while executing libc's build helper. Consequently, the updated native hover view has not been verified on the desktop and the new dashboard is not running. No Windows security settings were changed. The build in `dist/Trace-Bar` requires trust/signing acceptable to this machine's policy before native validation can continue.
+
+## Trace dashboard and bar launch repair — October 5, 2026
+
+Fixed a live Windows deadlock when a bar-first instance receives a dashboard reopen request: WebView creation ran inside the single-instance WM_COPYDATA callback. That callback now dispatches work to a separate thread, and window-creating commands use async execution. A creation mutex prevents simultaneous live updates and reopen requests from creating duplicate window labels. Added `start-trace.cmd` and `--show-all` to open both views with one collector.
+
+The updated Windows GNU release build and strict desktop Clippy passed. Verified the actual native windows: bar-first startup followed by dashboard launch, repeated launches exiting successfully, closing the dashboard while the bar remains, reopening the dashboard from the bar, closing the bar while the dashboard remains, and reopening the bar from the dashboard. Pausing from the bar changed the dashboard to Paused; resuming from the dashboard changed the bar to Tracking. Both showed matching distance totals. The existing collector stayed running throughout. Auto-collapse was temporarily disabled for UI inspection and its original setting restored afterward. This verifies local launch and shared-control behavior; the hardware and long-duration gates below remain pending.
+
+## Trace Bar integration — October 3, 2026
+
+The current `prd.md` Trace Bar addendum is implemented in the collector, secure IPC, native window host, separate frontend entry point, dashboard Focus page, settings, database migration, and documentation. See [Trace Bar specification](TRACE_BAR_SPEC.md) and [test plan](TEST_PLAN.md).
+
+- Production TypeScript/Vite build passed. The overlay entry contains roughly 10 KB of bar-specific JavaScript plus shared React/IPC utilities; its dependency graph excludes the approximately 600 KB ECharts chunk.
+- 19 frontend unit tests, 9 Playwright regressions, and 2 development-bridge tests passed. The new UI regressions cover shared tracking controls, privacy, focus completion, keyboard/Escape behavior, saved unit preference versus an older live snapshot, and bar settings. Expanded-bar screenshots were inspected.
+- 23 portable Rust tests passed in the prepared Linux container with `TZ=Asia/Kolkata`, including docking in negative-coordinate work areas, old-setting defaults, privacy/focus boundaries, focus crash recovery, idempotent persistence, range deletion, and prior-day record thresholds. Earlier native Windows test runs also passed; the final host test executable was blocked by Windows Application Control, so the final portable suite used the container.
+- Strict host collector/core/metrics/storage/IPC Clippy passed. The desktop and collector also passed strict Windows GNU target checks. The native release cross-build passed using the existing Rust/MinGW container.
+- The final cross-built Windows collector passed `smoke-trace-bar.mjs` under a normal Windows process token. It used a distinct SID-scoped pipe/mutex name and isolated database, checked actual hook movement, live event delivery, pause/resume, focus, incognito ignoring movement, settings propagation, restart persistence, client-disconnect independence, and deletion. The existing user collector and its database were left running and untouched.
+- The updated unsigned portable preview is delivered separately in `dist/Trace-Bar`. The previously running portable app and root installer are preserved; switching requires stopping the old collector and closing the old dashboard.
+
+Native window behavior across physical monitors, taskbar/DPI changes, fullscreen games/video, installer lifecycle, and the 8-/24-hour performance budgets remain manual hardware release gates. The implementation and passing automated checks do not establish production acceptance for those gates.
+
 Local repair verification on October 3, 2026:
 
 - Native Windows Rust tests: 16 passed (10 metrics, 6 storage), plus 6 frontend tests, 2 named-pipe bridge tests and 5 Playwright regressions, including collector startup recovery and saved tracking consent. TypeScript and the production frontend build passed.
