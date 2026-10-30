@@ -171,9 +171,8 @@ try {
     "Reinstall restores preferences",
   );
   assert.equal((await sessions()).length, 1, "Reinstall restores history");
-  run(join(install, "trace.exe"), ["--quit"]);
-  await call("Stop");
-  await sleep(500);
+  // Exercise the end-user uninstall path with both processes still running.
+  // Shutdown commands sent separately here race the package's own stop hook.
   await uninstall();
   console.log(
     "Installer lifecycle passed: install, automatic collector startup, both windows, consent, running upgrade, uninstall and history recovery.",
