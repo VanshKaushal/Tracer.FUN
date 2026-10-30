@@ -168,7 +168,7 @@ pub fn apply(app: &tauri::AppHandle, state: &SharedBar) -> Result<(), String> {
     .count();
     let logical: (f64, f64) = match mode.as_str() {
         "expanded" | "contextual" => (280., 350.),
-        "compact" if bottom => (112. + 100. * hover_count as f64, 64.),
+        "compact" if bottom => ((112. + 100. * hover_count as f64).max(240.), 64.),
         "compact" => (240., 44. + 44. * hover_count.div_ceil(2) as f64),
         _ if bottom => (48., 18.),
         _ => (18., 48.),

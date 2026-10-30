@@ -13,4 +13,5 @@ node_modules/
 /dist/
 /.trace-smoke-*/
 /.trace-bar-smoke-*/
+/.launch-site/
 

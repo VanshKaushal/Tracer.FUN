@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "identifier": "local.trace.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": { "script": "npm run dev", "cwd": "../.." },
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build && npm run sidecar",
+    "beforeBuildCommand": {
+      "script": "npm run build && npm run sidecar",
+      "cwd": "../.."
+    },
     "frontendDist": "../dist"
   },
   "app": {
@@ -20,11 +23,17 @@
     "targets": ["nsis"],
     "externalBin": ["binaries/trace-agent"],
     "icon": ["icons/icon.ico"],
+    "shortDescription": "Free, private mouse activity insights for your desktop",
+    "category": "Utility",
     "windows": {
+      "webviewInstallMode": { "type": "embedBootstrapper", "silent": true },
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false,
-        "installerHooks": "installer-hooks.nsh"
+        "installerHooks": "installer-hooks.nsh",
+        "startMenuFolder": "Trace",
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
       }
     }
   }

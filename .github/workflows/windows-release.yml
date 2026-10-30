@@ -1,0 +1,57 @@
+name: Windows installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Frontend and bridge tests
+        run: |
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:bridge
+      - name: Dashboard browser checks
+        run: |
+          npx playwright install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:ui
+      - name: Rust tests
+        run: cargo test --locked
+      - name: Build Windows setup
+        run: npm run installer -- -- --locked
+      - name: Collect installer and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          $installers = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
+          if ($installers.Count -ne 1) { throw "Expected exactly one Windows setup executable" }
+          Copy-Item -LiteralPath $installers[0].FullName -Destination release/Trace-Windows-x64-Setup.exe
+          $hash = (Get-FileHash release/Trace-Windows-x64-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Trace-Windows-x64-Setup.exe" | Set-Content release/SHA256SUMS.txt -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Trace-Windows-x64
+          path: release/*
+          if-no-files-found: error
+      - name: Prepare release for install verification
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" release/* --draft --prerelease --title "Trace $env:GITHUB_REF_NAME — free Windows beta" --notes-file docs/RELEASE_NOTES.md

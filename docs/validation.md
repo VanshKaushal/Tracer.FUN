@@ -1,5 +1,23 @@
 # Validation and release gates
 
+## Dashboard checklist fixes — October 12, 2026
+
+Added a labelled mobile navigation drawer with focus containment, Escape/backdrop closing, automatic close on navigation or desktop resizing, and current-page link semantics. Added route-specific document titles, a shared SVG browser favicon and descriptions for both HTML entries. Unknown hash routes and unknown direct paths render a client-side recovery page instead of silently showing Overview. The privacy footer remains text-only; no unused contact or copyright elements were introduced.
+
+Populated-data checks exposed horizontal overflow from long monitor names in Heatmap filters. Monitor selectors are now constrained to their available width and filter buttons wrap. Small screens use the full page width, large values wrap, and table scrolling is contained inside panels. The sidebar scrolls on short screens so its remaining navigation entries stay accessible.
+
+Production TypeScript/Vite build, 19 unit tests, 2 bridge tests and 15 Playwright checks passed. New regressions cover keyboard focus, mobile navigation and resize recovery, route titles, unknown-page recovery, favicon/description presence, and populated views across all ten routes at 320, 430 and 768 pixels. Mobile screenshots were inspected. The latest dashboard is served at the local development URL for review against the existing collector.
+
+The native executable refresh could not complete: the earlier build container is no longer available, and Windows Application Control blocked a native build helper in temporary storage (OS error 4551). Temporary build output was cleaned, Docker was returned to its previous stopped state, and the working portable desktop and native collector were preserved. Source and frontend build contain the new UI; the portable desktop executable still contains the previous frontend until a trusted packaging build is available.
+
+## Native collector launch repair — October 12, 2026
+
+The portable cross-built collector was rejected by Windows Application Control while the dashboard and bar could run. Built the same source using the native Windows MSVC toolchain (`cargo build --offline -p trace-agent`, with incremental compilation disabled) and replaced `dist/Trace-Bar/trace-agent.exe` with the resulting development executable. Updated the portable SHA256 manifest. No signing certificate was available and no Windows security settings were changed.
+
+The first build failed because E: was full. Removed only the untracked generated `target/debug/incremental` cache (about 548 MiB), then rebuilt successfully. Source files and the existing tracking database were preserved.
+
+Verified the packaged native collector starts successfully, reports tracking enabled with no storage error, and supplies real increasing distance and click totals to the dashboard and Trace Bar. The dashboard showed Tracking on and the bar displayed an active session timer. A clean stop/restart preserved recorded data, and launching `trace.exe --show-all` automatically started the packaged collector; only one collector and one window host remained. Both views were left running. The prior collector execution block is resolved locally for this development build; release signing and long-duration performance checks remain pending.
+
 ## Trace Bar hover refinement — October 5, 2026
 
 Added backward-compatible hover preferences for timer, clicks, cursor distance, scroll steps and active time. Hover reveals immediately and remains visible under the pointer; leaving collapses after 120 ms when auto-collapse is enabled. Left/right layouts now show the same selectable details as bottom, with adaptive window dimensions and larger values. The clicked expanded view retains its metrics and controls.

@@ -84,7 +84,9 @@ test("collector startup failure recovers and tracking consent is saved", async (
   await welcome
     .getByRole("switch", { name: "Enable interaction tracking" })
     .click();
-  await welcome.getByRole("button", { name: "Make yourself at home" }).click();
+  await welcome
+    .getByRole("button", { name: "Start tracking", exact: true })
+    .click();
   await expect(welcome).not.toBeVisible();
   await expect(page.getByText("Tracking on", { exact: true })).toBeVisible();
 });

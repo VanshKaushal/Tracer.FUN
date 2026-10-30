@@ -15,9 +15,13 @@ fn ensure_agent() -> Result<(), String> {
     let beside = exe.with_file_name("trace-agent.exe");
     let dev =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../target/debug/trace-agent.exe");
-    let path = if beside.exists() { beside } else { dev };
+    let path = if beside.exists() || !cfg!(debug_assertions) {
+        beside
+    } else {
+        dev
+    };
     if !path.exists() {
-        return Err(format!("Collector executable missing at {}. Keep trace.exe and trace-agent.exe together, or run npm run desktop.", path.display()));
+        return Err("Trace is missing a required file. Reinstall Trace using the latest Windows setup; your saved history will be kept.".into());
     }
     let mut cmd = std::process::Command::new(&path);
     #[cfg(windows)]
@@ -27,7 +31,13 @@ fn ensure_agent() -> Result<(), String> {
     }
     let mut child = cmd
         .spawn()
-        .map_err(|e| format!("Collector could not start ({}): {e}", path.display()))?;
+        .map_err(|e| {
+            if e.raw_os_error() == Some(4551) {
+                "Windows Application Control blocked the Trace collector. Use a release signed by a trusted publisher, or contact your device administrator. Your history is safe. (Windows error 4551)".into()
+            } else {
+                format!("Trace could not start its collector. Try Reconnect. If this continues, reinstall Trace; your history will be kept. Details: {e}")
+            }
+        })?;
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
         if trace_ipc::call(&Request::GetStatus).is_ok() {
@@ -124,6 +134,10 @@ async fn export_files(
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--quit") {
+                app.exit(0);
+                return;
+            }
             // Windows delivers this callback inside WM_COPYDATA. Creating a
             // WebView here blocks the message loop and every later launch.
             let app = app.clone();
@@ -157,6 +171,12 @@ fn main() {
             ..Default::default()
         })) as bar::SharedBar)
         .setup(|app| {
+            // Installers can close an existing host without opening a new
+            // dashboard or starting a collector when Trace is already closed.
+            if std::env::args().any(|a| a == "--quit") {
+                app.handle().exit(0);
+                return Ok(());
+            }
             let handle = app.handle().clone();
             if !std::env::args().any(|a| a == "--bar-only" || a == "--show-bar") {
                 bar::open_dashboard(

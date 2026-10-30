@@ -13,6 +13,7 @@ The dashboard and Trace Bar work alongside one collector. They share tracking st
 - **Focus sessions:** start and end manual sessions, inspect their statistics and review saved history.
 - **Tracking controls:** pause, resume and incognito from the dashboard or bar.
 - **Local exports:** export JSON or CSV and delete selected date ranges or all recorded data.
+- **Responsive dashboard:** a labelled mobile navigation drawer with keyboard focus handling, route-specific browser titles, a favicon and an unknown-page recovery view. Long monitor names and populated analytics stay within their panels on narrow screens.
 
 ## Platform support
 
@@ -179,7 +180,7 @@ The collector publishes live totals from memory. Trace Bar does not poll SQLite 
 
 **Collector is unavailable:** keep the executables together, inspect `%LOCALAPPDATA%\Trace\trace.log`, and use the dashboard's reconnect control.
 
-**Windows blocks execution:** unsigned builds can be rejected by Application Control. The latest hover build was blocked on the development machine, although its collector ran successfully. Distribution requires a build trusted by the target machine's policy; successful compilation alone does not establish that an executable can run there.
+**Windows blocks execution:** unsigned builds can be rejected by Application Control. The cross-built collector was rejected on the development machine. Rebuilding the same collector with the native Windows MSVC toolchain and replacing the portable collector restored tracking; a clean dashboard launch then started it automatically. That local repair uses a development build, and does not establish acceptance on other machines. Distribution requires a build trusted by the target machine's policy; successful compilation alone does not establish that an executable can run there.
 
 This is an implementation preview, not a production-certified release. Multi-monitor and DPI behavior, fullscreen applications, installer lifecycle and long-duration CPU/memory checks still need hardware validation. See [validation results and remaining gates](docs/validation.md) for the distinction between passing checks and unverified native behavior.
 
