@@ -1,0 +1,28 @@
+name: Installer lifecycle
+on:
+  push:
+    branches: [feat/trace-bar-hover-focus]
+    paths: [scripts/verify-installer.mjs, .github/workflows/installer-qa.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download the exact beta package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.1.0-beta.1 --pattern Trace-Windows-x64-Setup.exe --pattern SHA256SUMS.txt --dir "$env:RUNNER_TEMP/Trace-package"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $expected = ((Get-Content "$env:RUNNER_TEMP/Trace-package/SHA256SUMS.txt").Trim() -split '\s+')[0]
+          $actual = (Get-FileHash "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe" -Algorithm SHA256).Hash
+          if ($actual -ne $expected) { throw "Installer checksum mismatch" }
+      - name: Install, launch both views, upgrade, uninstall and restore history
+        run: node scripts/verify-installer.mjs "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe"
