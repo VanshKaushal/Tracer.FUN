@@ -4,6 +4,20 @@ Trace is a Windows desktop app for understanding how you use your mouse or track
 
 The dashboard and Trace Bar work alongside one collector. They share tracking state and data, so input is recorded once.
 
+**Trace is free.** No account, subscription, payment details or trial period is required.
+
+## Download and install
+
+Use the [Trace download page](https://trace-free-desktop.deekaushal16.chatgpt.site/) or [Windows beta release](https://github.com/VanshKaushal/Tracer.FUN/releases/tag/v0.1.0-beta.1).
+
+1. Download **Trace-Windows-x64-Setup.exe** and double-click it.
+2. Follow setup, then open Trace from the finish screen or Start menu.
+3. Choose whether to enable tracking. Open **Trace Bar** from the dashboard header and customize it in **Settings**.
+
+No terminal or developer tools are needed. Setup installs for your Windows account and handles WebView2 if missing; that runtime step needs internet. Updates preserve local history.
+
+The initial beta supports Windows 10/11 on Intel/AMD 64-bit PCs. It is unsigned: Windows may warn about an unknown publisher, and Application Control can block it. Do not disable device security. Trusted signing and the remaining clean-machine checks are required before general availability.
+
 ## Features
 
 - **Interaction dashboard:** activity trends, movement and click statistics, heatmaps, sessions, history and insights.
@@ -26,7 +40,7 @@ The dashboard and Trace Bar work alongside one collector. They share tracking st
 
 A browser preview does not collect global input. Cross-platform tracking needs separate collectors, permissions, local communication and window integration for each operating system. Remote viewing and cloud synchronization are not implemented.
 
-## Run from source
+## For developers: run from source
 
 ### Requirements
 
@@ -193,3 +207,5 @@ This is an implementation preview, not a production-certified release. Multi-mon
 - [Data model](docs/DATA_MODEL.md)
 - [Test plan](docs/TEST_PLAN.md)
 - [Validation results](docs/validation.md)
+- [Free launch checklist](docs/FREE_LAUNCH.md)
+- [Release notes](docs/RELEASE_NOTES.md)

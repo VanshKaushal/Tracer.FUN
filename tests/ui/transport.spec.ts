@@ -75,19 +75,30 @@ test("collector startup failure recovers and tracking consent is saved", async (
     },
     { stats: emptyStats() },
   );
+  await page.setViewportSize({ width: 320, height: 420 });
   await page.goto("/");
   await expect(page.getByRole("alert")).toContainText(
     "Collector startup failed",
   );
   const welcome = page.getByRole("dialog");
   await expect(welcome).toBeVisible({ timeout: 10000 });
-  await welcome
-    .getByRole("switch", { name: "Enable interaction tracking" })
-    .click();
+  const tracking = welcome.getByRole("switch", {
+    name: "Enable interaction tracking",
+  });
+  await expect(tracking).toHaveAttribute("aria-checked", "false");
+  await expect(tracking).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    welcome.getByRole("button", { name: "Explore without tracking" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(tracking).toBeFocused();
+  await page.keyboard.press("Space");
   await welcome
     .getByRole("button", { name: "Start tracking", exact: true })
     .click();
   await expect(welcome).not.toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page.getByText("Tracking on", { exact: true })).toBeVisible();
 });
 test("slow old range responses cannot replace a newer range, and pause resumes through IPC", async ({

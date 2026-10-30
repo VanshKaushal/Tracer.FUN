@@ -123,6 +123,10 @@ async function uninstall() {
     () => !existsSync(join(install, "trace.exe")),
     "Uninstall must remove the dashboard",
   );
+  await until(
+    () => !existsSync(join(install, "trace-agent.exe")),
+    "Uninstall must stop and remove the collector",
+  );
   assert.ok(
     existsSync(join(data, "Trace", "trace.db")),
     "Uninstall preserves history",
@@ -171,8 +175,7 @@ try {
     "Reinstall restores preferences",
   );
   assert.equal((await sessions()).length, 1, "Reinstall restores history");
-  // Exercise the end-user uninstall path with both processes still running.
-  // Shutdown commands sent separately here race the package's own stop hook.
+  // Keep both processes running so the package must perform its own shutdown.
   await uninstall();
   console.log(
     "Installer lifecycle passed: install, automatic collector startup, both windows, consent, running upgrade, uninstall and history recovery.",

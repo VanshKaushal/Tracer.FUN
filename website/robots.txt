@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://trace-free-desktop.deekaushal16.chatgpt.site/sitemap.xml
