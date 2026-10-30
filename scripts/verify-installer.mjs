@@ -76,19 +76,44 @@ async function launch() {
     return await call("GetStatus");
   }, "The installed dashboard did not start its collector");
   assert.equal(gui.exitCode, null, "Dashboard stays running");
-  const windows = `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class TraceWindowCheck { [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindow(string c, string t); }'; if ([TraceWindowCheck]::FindWindow($null, 'Trace') -eq [IntPtr]::Zero -or [TraceWindowCheck]::FindWindow($null, 'Trace Bar') -eq [IntPtr]::Zero) { exit 1 }`;
+  // Pass C# through EncodedCommand: Windows PowerShell's command-line quote
+  // handling otherwise strips the quotes from DllImport attributes.
+  const windows = `Add-Type -TypeDefinition 'using System; using System.Text; using System.Collections.Generic; using System.Runtime.InteropServices; public class TraceWindowCheck {
+    public delegate bool Callback(IntPtr h, IntPtr p);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(Callback f, IntPtr p);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    public static string[] Titles(uint process) { var names = new List<string>(); EnumWindows((h,p)=>{uint owner; GetWindowThreadProcessId(h,out owner); if(owner==process){var text=new StringBuilder(512);GetWindowText(h,text,512);if(text.Length>0)names.Add(text.ToString());}return true;},IntPtr.Zero);return names.ToArray(); }
+  }'; ConvertTo-Json -Compress -InputObject @([TraceWindowCheck]::Titles(${gui.pid}))`;
+  let titles = [],
+    windowError = "";
   await until(() => {
     try {
-      execFileSync(
-        "powershell.exe",
-        ["-NoProfile", "-NonInteractive", "-Command", windows],
-        { windowsHide: true, stdio: "pipe" },
+      titles = JSON.parse(
+        execFileSync(
+          "powershell.exe",
+          [
+            "-NoProfile",
+            "-NonInteractive",
+            "-EncodedCommand",
+            Buffer.from(windows, "utf16le").toString("base64"),
+          ],
+          { windowsHide: true, encoding: "utf8", stdio: "pipe" },
+        ).trim(),
       );
-      return true;
-    } catch {
+      return (
+        titles.includes("Trace Bar") &&
+        titles.some((t) => t === "Trace" || t.endsWith("| Trace"))
+      );
+    } catch (error) {
+      windowError = String(error.stderr ?? error);
       return false;
     }
-  }, "Both Trace and Trace Bar windows must exist");
+  }, "Both Trace and Trace Bar windows must exist").catch((error) => {
+    console.error({ titles, windowError });
+    throw error;
+  });
+  console.log("Installed windows:", titles);
 }
 async function uninstall() {
   const name = readdirSync(install).find((n) => /uninstall.*\.exe$/i.test(n));
