@@ -45,6 +45,8 @@ jobs:
           Copy-Item -LiteralPath $installers[0].FullName -Destination release/Trace-Windows-x64-Setup.exe
           $hash = (Get-FileHash release/Trace-Windows-x64-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  Trace-Windows-x64-Setup.exe" | Set-Content release/SHA256SUMS.txt -Encoding ascii
+      - name: Verify installer lifecycle on this clean Windows runner
+        run: node scripts/verify-installer.mjs release/Trace-Windows-x64-Setup.exe
       - uses: actions/upload-artifact@v4
         with:
           name: Trace-Windows-x64

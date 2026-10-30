@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   install:
     runs-on: windows-latest
@@ -19,7 +20,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download v0.1.0-beta.1 --pattern Trace-Windows-x64-Setup.exe --pattern SHA256SUMS.txt --dir "$env:RUNNER_TEMP/Trace-package"
+          gh run download 41092322986 --name Trace-Windows-x64 --dir "$env:RUNNER_TEMP/Trace-package"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $expected = ((Get-Content "$env:RUNNER_TEMP/Trace-package/SHA256SUMS.txt").Trim() -split '\s+')[0]
           $actual = (Get-FileHash "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe" -Algorithm SHA256).Hash
