@@ -1,6 +1,6 @@
 Trace is free to use, with no account, subscription, trial or payment details.
 
-Get the one-click download and installation guide at https://trace-free-desktop.deekaushal16.chatgpt.site/. The website hosts the same checksum-verified setup file as this release.
+Get the one-click download and installation guide at https://gettrace.pages.dev/. The website hosts the same checksum-verified setup file as this release.
 
 Download **Trace-Windows-x64-Setup.exe**, open it and follow the setup screens. Open Trace from the finish screen or Start menu. No terminal, Node.js or Rust is needed. Setup installs for your Windows account and offers to install Microsoft's WebView2 runtime if needed (internet required).
 

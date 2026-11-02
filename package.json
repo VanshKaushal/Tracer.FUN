@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "site:build": "node scripts/build-download-site.mjs",
     "dev": "vite --config apps/desktop/vite.config.ts",
     "test:bridge": "node --test scripts/local-collector.test.mjs",
     "test:windows": "node scripts/smoke-windows.mjs",

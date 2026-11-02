@@ -8,7 +8,7 @@ The dashboard and Trace Bar work alongside one collector. They share tracking st
 
 ## Download and install
 
-Use the [Trace download page](https://trace-free-desktop.deekaushal16.chatgpt.site/) or [Windows beta release](https://github.com/VanshKaushal/Tracer.FUN/releases/tag/v0.1.0-beta.1).
+Use the [Trace download page](https://gettrace.pages.dev/) or [Windows beta release](https://github.com/VanshKaushal/Tracer.FUN/releases/tag/v0.1.0-beta.1).
 
 1. Download **Trace-Windows-x64-Setup.exe** and double-click it.
 2. Follow setup, then open Trace from the finish screen or Start menu.

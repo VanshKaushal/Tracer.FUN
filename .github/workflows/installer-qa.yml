@@ -18,7 +18,7 @@ jobs:
       - name: Download the exact beta package from the public website
         run: |
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/Trace-package" | Out-Null
-          Invoke-WebRequest 'https://trace-free-desktop.deekaushal16.chatgpt.site/downloads/Trace-Windows-x64-Setup.exe' -OutFile "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe"
+          Invoke-WebRequest 'https://gettrace.pages.dev/downloads/Trace-Windows-x64-Setup.exe' -OutFile "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe"
           $expected = '1f8413ce9e78b4ae6b795c93e3447efdddb10eefee93fb35c099612538df08f8'
           $actual = (Get-FileHash "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe" -Algorithm SHA256).Hash
           if ($actual -ne $expected) { throw "Installer checksum mismatch" }

@@ -4,7 +4,13 @@ Trace's current release is entirely free: no billing, accounts, trials or mandat
 
 ## Visitor and installation experience
 
-The public download page lives at https://trace-free-desktop.deekaushal16.chatgpt.site/. Its source is in `website/`. The separate Sites checkout is `.launch-site/`, with its identity in `.openai/hosting.json`; do not recreate the Site. Project ID: `appgprj_6ae4c87bf27c81918db0832c28c21b7b`.
+The public download page lives at https://gettrace.pages.dev/. Its source is in `website/`. Cloudflare Pages project `gettrace` serves a static site and the verified Windows installer, without Pages Functions or a custom domain. The production branch label is `feat/trace-bar-hover-focus`; this does not merge Git's `main` branch.
+
+To prepare a deployment, run `npm run site:build`. This creates `dist/cloudflare-pages` from the website source and the checksum-verified beta installer. It uses the local installer when available, otherwise downloads the existing published copy. An explicit local installer path can be passed after `--`. The build refuses an installer with a different SHA-256. When publishing a new release, update the pinned checksum and installer QA together.
+
+Publish the prepared folder with `npx wrangler@4.92.0 pages deploy dist/cloudflare-pages --project-name gettrace --branch feat/trace-bar-hover-focus` after signing in to the correct Cloudflare account. You can also upload that folder through the Cloudflare Pages dashboard. This is a maintainer workflow; people installing Trace only need the setup download.
+
+The earlier Sites deployment is retained as a fallback. Its checkout is `.launch-site/`, with its identity in `.openai/hosting.json`, project `appgprj_6ae4c87bf27c81918db0832c28c21b7b`. New public links and website canonical metadata use Cloudflare Pages.
 
 The intended path is **Download setup → double-click → finish → open Trace → choose tracking consent**. Node, Rust, Git and terminal commands are developer requirements only. The installer bundles the collector, installs for the current Windows account, creates a Start menu entry and bootstraps WebView2 when absent. Downloading that runtime needs internet. Both views share one collector; no separate service setup is needed.
 

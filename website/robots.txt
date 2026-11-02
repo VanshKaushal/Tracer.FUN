@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://trace-free-desktop.deekaushal16.chatgpt.site/sitemap.xml
+Sitemap: https://gettrace.pages.dev/sitemap.xml
