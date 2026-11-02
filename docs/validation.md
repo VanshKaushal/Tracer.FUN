@@ -1,5 +1,15 @@
 # Validation and release gates
 
+## Cloudflare Pages migration — November 3, 2026
+
+The primary public URL is now https://gettrace.pages.dev/. Cloudflare Pages project `gettrace` has a production deployment from `feat/trace-bar-hover-focus` at source commit `c91b2f6d6f93f0d408a6972ab941e0bcd9168a1c`, deployment `5eeaf877-6690-4ba0-adb2-16790b10a99e`. This uses static assets, with no Pages Functions or new paid services. The earlier Sites deployment remains a fallback.
+
+Anonymous HTTPS checks passed for the homepage, CSS, JavaScript, favicon, robots file, sitemap and installer. Unknown paths return the branded recovery page with HTTP 404. Canonical/Open Graph URLs and the sitemap use `gettrace.pages.dev`; the public HTML contains no former hosting URL. The setup response has `Content-Disposition: attachment` and `application/octet-stream`.
+
+Browser verification passed at 320 and 1440 pixels with no document overflow or page errors. Mobile navigation closed after selection. Clicking Download saved `Trace-Windows-x64-Setup.exe`, 5,059,300 bytes, with the original verified SHA-256 `1f8413ce9e78b4ae6b795c93e3447efdddb10eefee93fb35c099612538df08f8`. The new site packager also rejected an invalid installer before copying it into the deployment folder.
+
+The README, release notes, repository homepage and public-download installer QA now reference Cloudflare Pages. The desktop executables, tracking behavior and local data are unchanged. Windows publisher signing and the physical-device checks below remain pending; moving the download website does not remove those beta limitations. Git's `main` branch remains unmerged.
+
 ## Free Windows beta — October 30, 2026
 
 Published the free download page at https://trace-free-desktop.deekaushal16.chatgpt.site/ and the `v0.1.0-beta.1` GitHub prerelease. The Windows setup is hosted directly with the website, with GitHub Releases as a mirror. Anonymous HTTP checks confirmed the page and installer return 200, and an unknown URL returns the branded recovery page with HTTP 404. A browser click saved `Trace-Windows-x64-Setup.exe`; its SHA-256 matched the clean Windows build artifact.
