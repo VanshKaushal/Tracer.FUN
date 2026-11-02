@@ -21,6 +21,10 @@ export default defineConfig(({ command, mode }) => {
       outDir: "dist",
       emptyOutDir: true,
       rollupOptions: {
+        input: {
+          dashboard: fileURLToPath(new URL("./index.html", import.meta.url)),
+          bar: fileURLToPath(new URL("./trace-bar.html", import.meta.url)),
+        },
         output: {
           manualChunks: {
             charts: [

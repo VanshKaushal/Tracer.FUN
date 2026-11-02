@@ -1,0 +1,46 @@
+name: Source checks
+
+on:
+  push:
+    branches: [feat/trace-bar-hover-focus]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Frontend build and unit tests
+        run: |
+          npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:bridge
+      - name: Browser regressions
+        run: |
+          npx playwright install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:ui
+      - name: Rust tests
+        run: cargo test --workspace --exclude trace-desktop --locked
+      - name: Build debug sidecar
+        run: npm run sidecar -- --debug
+      - name: Check the desktop host from a clean checkout
+        run: cargo check --locked -p trace-desktop --features custom-protocol
+      - name: Verify generated schemas are recreated without being tracked
+        run: |
+          $schemas = 'apps/desktop/src-tauri/gen/schemas'
+          if (!(Test-Path "$schemas/windows-schema.json")) { throw 'Tauri did not regenerate its Windows capability schema' }
+          if (git ls-files apps/desktop/src-tauri/gen/) { throw 'Generated schemas must not be tracked' }

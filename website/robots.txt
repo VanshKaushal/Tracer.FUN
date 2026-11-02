@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gettrace.pages.dev/sitemap.xml

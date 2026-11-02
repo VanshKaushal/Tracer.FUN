@@ -1,11 +1,18 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use trace_core::{Session, Settings};
+use trace_core::{BarSettings, LiveStats, Session, Settings};
 use trace_storage::Range;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", content = "args")]
 pub enum Request {
     GetStatus,
+    GetLiveStats,
+    GetBarSettings,
+    SetBarSettings { settings: BarSettings },
+    SetIncognito { enabled: bool },
+    StartFocus,
+    EndFocus,
+    GetFocusSessions { range: Range },
     GetToday,
     GetRange { range: Range, monitor: Option<u16> },
     GetSessions { range: Range },
@@ -22,6 +29,7 @@ pub enum Request {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Status {
+    pub incognito: bool,
     pub tracking: bool,
     pub idle: bool,
     pub paused_until: Option<i64>,
@@ -30,6 +38,37 @@ pub struct Status {
     pub queue_overflows: u64,
     pub storage_error: Option<String>,
     pub current_session: Option<Session>,
+}
+// A bounded latest-value channel; slow subscribers skip old frames instead of accumulating events.
+#[derive(Default)]
+pub struct LiveHub {
+    state: std::sync::Mutex<(u64, Option<LiveStats>)>,
+    changed: std::sync::Condvar,
+}
+impl LiveHub {
+    pub fn publish(&self, value: LiveStats) {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        state.0 = state.0.wrapping_add(1);
+        state.1 = Some(value);
+        self.changed.notify_all();
+    }
+    pub fn latest(&self) -> Option<LiveStats> {
+        self.state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .1
+            .clone()
+    }
+    pub fn wait(&self, revision: u64) -> (u64, Option<LiveStats>) {
+        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let (state, _) = self
+            .changed
+            .wait_timeout_while(state, std::time::Duration::from_secs(2), |s| {
+                s.0 == revision
+            })
+            .unwrap_or_else(|e| e.into_inner());
+        (state.0, state.1.clone())
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Response {

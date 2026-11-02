@@ -125,7 +125,15 @@ impl Store {
         }
         let version: i64 =
             conn.query_row("SELECT MAX(version) FROM schema_version", [], |r| r.get(0))?;
-        anyhow::ensure!(version == 1, "Unsupported database schema {version}");
+        anyhow::ensure!(
+            (1..=2).contains(&version),
+            "Unsupported database schema {version}"
+        );
+        if version == 1 {
+            let tx = conn.transaction()?;
+            tx.execute_batch(include_str!("../../../migrations/002_trace_bar.sql"))?;
+            tx.commit()?;
+        }
         Ok(Self { conn })
     }
     pub fn settings(&self) -> Result<Settings> {
@@ -146,6 +154,7 @@ impl Store {
         Ok(())
     }
     pub fn recover_sessions(&self, now: i64) -> Result<i64> {
+        self.conn.execute("UPDATE focus_sessions SET end_ts=MAX(start_ts,MIN(updated_ts,?1)) WHERE end_ts IS NULL", [now])?;
         // A crash cannot leave a session falsely active. Its last persisted duration bounds its end.
         let mut stmt = self
             .conn
@@ -222,6 +231,9 @@ impl Store {
         for s in b.sessions.values() {
             tx.execute("INSERT INTO sessions(id,start_ts,end_ts,stats) VALUES(?1,?2,?3,?4) ON CONFLICT(id) DO UPDATE SET end_ts=excluded.end_ts,stats=excluded.stats",params![s.id,s.start_ts,s.end_ts,encode_stats(&s.stats)?])?;
         }
+        for s in b.focus_sessions.values() {
+            tx.execute("INSERT INTO focus_sessions(id,start_ts,end_ts,updated_ts,stats,context_switches) VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET end_ts=excluded.end_ts,updated_ts=excluded.updated_ts,stats=excluded.stats,context_switches=excluded.context_switches", params![s.id,s.start_ts,s.end_ts,s.updated_ts,encode_stats(&s.stats)?,s.context_switches])?;
+        }
         for ((id, day), s) in &b.session_days {
             let old: Option<String> = tx
                 .query_row(
@@ -281,6 +293,86 @@ impl Store {
                 start_ts,
                 end_ts,
                 stats: serde_json::from_str(&s)?,
+            })
+        })
+        .collect()
+    }
+    pub fn next_focus_id(&self) -> Result<i64> {
+        Ok(self.conn.query_row(
+            "SELECT COALESCE(MAX(id),0)+1 FROM focus_sessions",
+            [],
+            |r| r.get(0),
+        )?)
+    }
+    pub fn bar_history(&self, now: i64) -> Result<BarHistory> {
+        let today = date_at(now);
+        let rows = self.daily(&Range {
+            start: date_at(now - 90 * 86400000),
+            end: date_at(now - 86400000),
+        })?;
+        let weekday = NaiveDate::parse_from_str(&today, "%Y-%m-%d")?.weekday();
+        let mut history = BarHistory {
+            recorded_days: rows.len(),
+            ..Default::default()
+        };
+        let (record_clicks,record_distance,days) = self.conn.query_row("SELECT CAST(COALESCE(MAX(left_clicks+right_clicks+middle_clicks),0) AS INTEGER),COALESCE(MAX(distance_px),0),COUNT(*) FROM daily_stats WHERE date<?1",[&today],|r|Ok((r.get::<_,u64>(0)?,r.get::<_,f64>(1)?,r.get::<_,usize>(2)?)))?;
+        history.max_daily_clicks = record_clicks;
+        history.max_daily_distance = record_distance;
+        history.recorded_days = days;
+        let mut weekday_clicks = Vec::new();
+        for d in rows {
+            history.max_daily_clicks = history.max_daily_clicks.max(d.stats.clicks());
+            history.max_daily_distance = history.max_daily_distance.max(d.stats.distance_px);
+            if NaiveDate::parse_from_str(&d.date, "%Y-%m-%d")?.weekday() == weekday {
+                weekday_clicks.push(d.stats.clicks() as f64);
+            }
+        }
+        history.weekday_days = weekday_clicks.len();
+        if !weekday_clicks.is_empty() {
+            history.weekday_clicks =
+                weekday_clicks.iter().sum::<f64>() / weekday_clicks.len() as f64;
+            history.weekday_clicks_stddev = (weekday_clicks
+                .iter()
+                .map(|c| (c - history.weekday_clicks).powi(2))
+                .sum::<f64>()
+                / weekday_clicks.len() as f64)
+                .sqrt();
+        }
+        let month = format!("{}-01", &today[..7]);
+        history.longest_month_session_ms = self
+            .sessions(&Range {
+                start: month,
+                end: today,
+            })?
+            .into_iter()
+            .filter(|s| s.end_ts.is_some())
+            .map(|s| s.stats.active_ms)
+            .max()
+            .unwrap_or(0);
+        Ok(history)
+    }
+    pub fn focus_sessions(&self, range: &Range) -> Result<Vec<FocusSession>> {
+        let (a, b) = range.bounds()?;
+        let mut stmt = self.conn.prepare("SELECT id,start_ts,end_ts,updated_ts,stats,context_switches FROM focus_sessions WHERE start_ts<?2 AND COALESCE(end_ts,?2)>=?1 ORDER BY start_ts DESC LIMIT 1000")?;
+        let rows = stmt.query_map(params![a, b], |r| {
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get::<_, String>(4)?,
+                r.get(5)?,
+            ))
+        })?;
+        rows.map(|row| {
+            let (id, start_ts, end_ts, updated_ts, stats, context_switches) = row?;
+            Ok(FocusSession {
+                id,
+                start_ts,
+                end_ts,
+                updated_ts,
+                stats: serde_json::from_str(&stats)?,
+                context_switches,
             })
         })
         .collect()
@@ -470,6 +562,10 @@ impl Store {
     pub fn delete(&mut self, r: &Range) -> Result<()> {
         let (a, b) = r.bounds()?;
         let tx = self.conn.transaction()?;
+        tx.execute(
+            "DELETE FROM focus_sessions WHERE start_ts<?2 AND COALESCE(end_ts,?2)>=?1",
+            params![a, b],
+        )?;
         for table in [
             "minute_stats",
             "hourly_stats",
@@ -541,7 +637,7 @@ impl Store {
         let daily = self.daily(r)?;
         let sessions = self.sessions(r)?;
         if format == "json" {
-            files.insert("trace.json".into(),serde_json::to_string_pretty(&serde_json::json!({"schema_version":1,"range":r,"daily":daily,"sessions":sessions}))?);
+            files.insert("trace.json".into(),serde_json::to_string_pretty(&serde_json::json!({"schema_version":2,"range":r,"daily":daily,"sessions":sessions,"focus_sessions":self.focus_sessions(r)?}))?);
         } else if format == "csv" {
             let mut writer = csv::Writer::from_writer(vec![]);
             writer.write_record([
@@ -646,6 +742,75 @@ impl Store {
 mod tests {
     use super::*;
     #[test]
+    fn bar_history_uses_prior_days_and_all_time_records() -> Result<()> {
+        let mut db = Store::open(":memory:")?;
+        let date = Range {
+            start: "2026-10-02".into(),
+            end: "2026-10-02".into(),
+        };
+        let start = date.bounds()?.0;
+        let mut batch = Batch::default();
+        batch.minutes.insert(
+            start,
+            Stats {
+                left_clicks: 30,
+                right_clicks: 2,
+                distance_px: 200.,
+                ..Default::default()
+            },
+        );
+        batch.minutes.insert(
+            start + 86400000,
+            Stats {
+                left_clicks: 999,
+                ..Default::default()
+            },
+        );
+        db.flush(&batch, &[], start + 86400000)?;
+        let history = db.bar_history(start + 86400000)?;
+        assert_eq!(history.max_daily_clicks, 32);
+        assert_eq!(history.max_daily_distance, 200.);
+        assert_eq!(history.recorded_days, 1);
+        Ok(())
+    }
+    #[test]
+    fn focus_history_recovery_export_and_date_deletion() -> Result<()> {
+        let mut db = Store::open(":memory:")?;
+        let range = Range {
+            start: "2026-10-03".into(),
+            end: "2026-10-03".into(),
+        };
+        let start = range.bounds()?.0;
+        let mut batch = Batch::default();
+        batch.focus_sessions.insert(
+            1,
+            FocusSession {
+                id: 1,
+                start_ts: start,
+                end_ts: None,
+                updated_ts: start + 2000,
+                stats: Stats {
+                    left_clicks: 7,
+                    distance_px: 96.,
+                    ..Default::default()
+                },
+                context_switches: None,
+            },
+        );
+        db.flush(&batch, &[], start + 2000)?;
+        db.flush(&batch, &[], start + 2000)?;
+        let rows = db.focus_sessions(&range)?;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].stats.left_clicks, 7);
+        assert_eq!(db.next_focus_id()?, 2);
+        db.recover_sessions(start + 100000)?;
+        assert_eq!(db.focus_sessions(&range)?[0].end_ts, Some(start + 2000));
+        assert!(db.export("json", &range)?["trace.json"].contains("focus_sessions"));
+        db.delete(&range)?;
+        assert!(db.focus_sessions(&range)?.is_empty());
+        Ok(())
+    }
+    #[test]
     fn persistence_export_delete_retention() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let path = dir.path().join("trace.db");
@@ -733,8 +898,10 @@ mod tests {
             end: "2026-10-02".into(),
         };
         let (midnight, _) = range.bounds()?;
-        let mut settings = Settings::default();
-        settings.tracking_enabled = true;
+        let settings = Settings {
+            tracking_enabled: true,
+            ..Default::default()
+        };
         let monitor = Monitor {
             monitor_id: 1,
             device_name: "Display".into(),

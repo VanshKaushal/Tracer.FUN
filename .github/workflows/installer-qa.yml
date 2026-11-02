@@ -1,0 +1,26 @@
+name: Installer lifecycle
+on:
+  push:
+    branches: [feat/trace-bar-hover-focus]
+    paths: [scripts/verify-installer.mjs, .github/workflows/installer-qa.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download the exact beta package from the public website
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/Trace-package" | Out-Null
+          Invoke-WebRequest 'https://gettrace.pages.dev/downloads/Trace-Windows-x64-Setup.exe' -OutFile "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe"
+          $expected = '1f8413ce9e78b4ae6b795c93e3447efdddb10eefee93fb35c099612538df08f8'
+          $actual = (Get-FileHash "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe" -Algorithm SHA256).Hash
+          if ($actual -ne $expected) { throw "Installer checksum mismatch" }
+      - name: Install, launch both views, upgrade, uninstall and restore history
+        run: node scripts/verify-installer.mjs "$env:RUNNER_TEMP/Trace-package/Trace-Windows-x64-Setup.exe"

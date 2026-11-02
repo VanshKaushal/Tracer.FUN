@@ -53,7 +53,27 @@ pub fn user_sid() -> Result<String> {
     }
 }
 fn pipe_name() -> Result<Vec<u16>> {
-    Ok(wide(&format!(r"\\.\pipe\Trace-{}", user_sid()?)))
+    Ok(wide(&format!(r"\\.\pipe\Trace-{}", instance_key()?)))
+}
+pub fn instance_key() -> Result<String> {
+    let sid = user_sid()?;
+    match std::env::var("TRACE_INSTANCE") {
+        Ok(suffix) => {
+            anyhow::ensure!(
+                !suffix.is_empty()
+                    && suffix.len() <= 64
+                    && suffix
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '-'),
+                "Invalid isolated Trace instance"
+            );
+            Ok(format!("{sid}-{suffix}"))
+        }
+        Err(_) => Ok(sid),
+    }
+}
+fn live_pipe_name() -> Result<Vec<u16>> {
+    Ok(wide(&format!(r"\\.\pipe\Trace-{}-Live", instance_key()?)))
 }
 pub struct SecurityDescriptor {
     pub attributes: SECURITY_ATTRIBUTES,
@@ -244,6 +264,91 @@ pub fn serve(tx: mpsc::SyncSender<Envelope>) -> Result<()> {
             // The client acknowledges the response before the server disconnects the pipe.
             let _ = read_exact(h, 1);
             DisconnectNamedPipe(h);
+        }
+    }
+}
+
+pub fn subscribe(mut on_frame: impl FnMut(LiveStats) -> bool) -> Result<()> {
+    unsafe {
+        let name = live_pipe_name()?;
+        let h = CreateFileW(
+            name.as_ptr(),
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            null(),
+            OPEN_EXISTING,
+            0,
+            null_mut(),
+        );
+        anyhow::ensure!(h != INVALID_HANDLE_VALUE, "Live collector unavailable");
+        let handle = Handle(h);
+        loop {
+            if !on_frame(read_json(handle.0)?) {
+                return Ok(());
+            }
+        }
+    }
+}
+pub fn serve_live(hub: std::sync::Arc<LiveHub>) -> Result<()> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let clients = std::sync::Arc::new(AtomicUsize::new(0));
+    unsafe {
+        let name = live_pipe_name()?;
+        let security = SecurityDescriptor::current_user()?;
+        let mut first = true;
+        loop {
+            // Keep resource usage bounded even if local clients connect without reading.
+            while clients.load(Ordering::Relaxed) >= 8 {
+                std::thread::sleep(Duration::from_millis(100));
+            }
+            let h = CreateNamedPipeW(
+                name.as_ptr(),
+                PIPE_ACCESS_DUPLEX
+                    | if first {
+                        FILE_FLAG_FIRST_PIPE_INSTANCE
+                    } else {
+                        0
+                    },
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                9,
+                65536,
+                65536,
+                1000,
+                &security.attributes,
+            );
+            anyhow::ensure!(
+                h != INVALID_HANDLE_VALUE,
+                "Cannot create live pipe: {}",
+                GetLastError()
+            );
+            first = false;
+            let handle = Handle(h);
+            loop {
+                if ConnectNamedPipe(h, null_mut()) != 0 || GetLastError() == ERROR_PIPE_CONNECTED {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            clients.fetch_add(1, Ordering::Relaxed);
+            let shared = hub.clone();
+            let count = clients.clone();
+            let raw = handle.0 as usize;
+            std::mem::forget(handle);
+            std::thread::spawn(move || {
+                let handle = Handle(raw as HANDLE);
+                let mut revision = 0;
+                loop {
+                    let (next, frame) = shared.wait(revision);
+                    revision = next;
+                    if let Some(frame) = frame {
+                        if write_json(handle.0, &frame).is_err() {
+                            break;
+                        }
+                    }
+                }
+                DisconnectNamedPipe(handle.0);
+                count.fetch_sub(1, Ordering::Relaxed);
+            });
         }
     }
 }

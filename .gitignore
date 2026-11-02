@@ -1,9 +1,11 @@
 /target/
 /node_modules/
+node_modules/
 /.npm-cache/
 /.browser-cache/
 /apps/desktop/dist/
 /apps/desktop/src-tauri/binaries/
+/apps/desktop/src-tauri/gen/
 *.db
 *.db-shm
 *.db-wal
@@ -11,4 +13,13 @@
 /test-results/
 /dist/
 /.trace-smoke-*/
+/.trace-bar-smoke-*/
+/.launch-site/
+/.wrangler/
+/start-trace.cmd
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
 

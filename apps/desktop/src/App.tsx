@@ -24,6 +24,7 @@ import {
   X,
   PanelLeftClose,
   RefreshCw,
+  Menu,
 } from "lucide-react";
 import type { Dashboard, Range, Settings, Stats, Status } from "./types";
 import {
@@ -43,6 +44,12 @@ import {
 } from "./metrics";
 import { call, desktop, localBrowser, exportData, restart } from "./api";
 import { Chart, seriesChart } from "./Chart";
+import { invoke } from "@tauri-apps/api/core";
+import { nativeDesktop } from "./api";
+import { defaultSettings, normalizeSettings } from "./shared/settings";
+import { useLiveStats } from "./shared/live";
+import BarSettingsPanel from "./settings/BarSettingsPanel";
+import FocusPanel from "./FocusPanel";
 
 const navigation = [
   ["/", "Overview", Grid2X2],
@@ -51,10 +58,16 @@ const navigation = [
   ["/clicks", "Clicks", Crosshair],
   ["/heatmap", "Heatmap", Grid2X2],
   ["/sessions", "Sessions", Clock3],
+  ["/focus", "Focus", Crosshair],
   ["/history", "History", History],
   ["/insights", "Insights", Lightbulb],
   ["/settings", "Settings", Settings2],
 ] as const;
+const readRoute = () =>
+  window.location.hash.slice(1) ||
+  (["/", "/index.html"].includes(window.location.pathname)
+    ? "/"
+    : window.location.pathname);
 const emptyDashboard: Dashboard = {
   daily: [],
   timeline: [],
@@ -67,18 +80,6 @@ const emptyDashboard: Dashboard = {
   weekly_range: dateRange("7 days"),
   records: [],
   deviations: [],
-};
-const defaultSettings: Settings = {
-  launch_at_login: false,
-  tracking_enabled: false,
-  idle_threshold_seconds: 300,
-  raw_retention_hours: 24,
-  minute_retention_days: 30,
-  theme: "dark",
-  accent_color: "#b6e77d",
-  distance_unit: "px",
-  application_tracking_enabled: false,
-  onboarding_complete: false,
 };
 const time = (ts: number) =>
   new Date(ts).toLocaleTimeString(undefined, {
@@ -140,7 +141,11 @@ function Stat({
 }
 
 export default function App() {
-  const [route, setRoute] = useState(window.location.hash.slice(1) || "/");
+  const { live, unavailable } = useLiveStats();
+  const [route, setRoute] = useState(readRoute);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const menuPanel = useRef<HTMLElement>(null);
   const [preset, setPreset] = useState("Today");
   const [range, setRange] = useState<Range>(dateRange("Today"));
   const [monitor, setMonitor] = useState("all");
@@ -159,6 +164,45 @@ export default function App() {
   const [hasSettings, setHasSettings] = useState(false);
   const refreshSequence = useRef(0);
   const settingsLoaded = useRef(false);
+  const onboardingOpen =
+    desktop && hasSettings && !settings.onboarding_complete;
+  useEffect(() => {
+    if (!onboardingOpen && !deleteMode) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = document.querySelector<HTMLElement>(
+      onboardingOpen ? ".onboarding" : '[role="alertdialog"]',
+    );
+    const items = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          "button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled)",
+        ) ?? [],
+      );
+    items()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && deleteMode && !busy) setDeleteMode(null);
+      if (event.key !== "Tab") return;
+      const controls = items();
+      const first = controls[0],
+        last = controls.at(-1);
+      if (!controls.length) {
+        event.preventDefault();
+        return;
+      }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [onboardingOpen, deleteMode, busy]);
   const refresh = useCallback(async () => {
     if (!desktop) return;
     const sequence = ++refreshSequence.current;
@@ -171,7 +215,7 @@ export default function App() {
         call<Status>("GetStatus"),
       ]);
       if (!settingsLoaded.current) {
-        const s = await call<Settings>("GetSettings");
+        const s = normalizeSettings(await call<Settings>("GetSettings"));
         setSettings(s);
         setDraft(s);
         setHasSettings(true);
@@ -192,7 +236,51 @@ export default function App() {
     }
   }, [range, monitor]);
   useEffect(() => {
-    const fn = () => setRoute(window.location.hash.slice(1) || "/");
+    if (!live) return;
+    setStatus((previous) => ({
+      ...previous,
+      tracking: live.tracking,
+      paused: live.paused,
+      incognito: live.incognito,
+      paused_until: live.paused_until,
+      idle: !live.session,
+      current_session: live.session,
+      dropped_moves: previous?.dropped_moves ?? 0,
+      queue_overflows: previous?.queue_overflows ?? 0,
+      storage_error: live.storage_error,
+    }));
+    const next = normalizeSettings(live.settings);
+    if (JSON.stringify(next) !== JSON.stringify(settings)) {
+      const changed = Object.fromEntries(
+        Object.entries(next).filter(
+          ([key, value]) =>
+            key !== "trace_bar" &&
+            JSON.stringify(value) !==
+              JSON.stringify(settings[key as keyof Settings]),
+        ),
+      );
+      const barChanged = Object.fromEntries(
+        Object.entries(next.trace_bar).filter(
+          ([key, value]) =>
+            value !== settings.trace_bar[key as keyof typeof next.trace_bar],
+        ),
+      );
+      setSettings(next);
+      setDraft((previous) => ({
+        ...previous,
+        ...changed,
+        trace_bar: { ...previous.trace_bar, ...barChanged },
+      }));
+    }
+  }, [live]);
+  useEffect(() => {
+    if (unavailable) setError(unavailable);
+  }, [unavailable]);
+  useEffect(() => {
+    const fn = () => {
+      setRoute(readRoute());
+      setMobileMenuOpen(false);
+    };
     window.addEventListener("hashchange", fn);
     return () => window.removeEventListener("hashchange", fn);
   }, []);
@@ -247,7 +335,56 @@ export default function App() {
       setDraft((previous) => ({ ...previous, distance_unit: unit }));
     });
   }
-  const title = navigation.find((n) => n[0] === route)?.[1] ?? "Overview";
+  const routeInfo = navigation.find((n) => n[0] === route);
+  const title = routeInfo?.[1] ?? "Page not found";
+  const knownRoute = !!routeInfo;
+  useEffect(() => {
+    document.title = `${title} | Trace`;
+  }, [title]);
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const panel = menuPanel.current;
+    const focusable = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          "a[href], button:not(:disabled)",
+        ) ?? [],
+      );
+    panel?.querySelector<HTMLButtonElement>(".mobile-menu-close")?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileMenuOpen(false);
+      }
+      if (event.key === "Tab") {
+        const items = focusable();
+        const first = items[0],
+          last = items.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    const viewport = window.matchMedia("(max-width: 850px)");
+    const onResize = () => {
+      if (!viewport.matches) setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    viewport.addEventListener("change", onResize);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+      viewport.removeEventListener("change", onResize);
+      if (menuTrigger.current?.getClientRects().length)
+        menuTrigger.current.focus();
+    };
+  }, [mobileMenuOpen]);
   const countDays =
     Math.round(
       (Date.parse(`${range.end}T12:00:00Z`) -
@@ -848,6 +985,12 @@ export default function App() {
           <span className="tag">Not enabled</span>
         </div>
       </Panel>
+      <BarSettingsPanel
+        value={draft.trace_bar}
+        onChange={(trace_bar) =>
+          setDraft((previous) => ({ ...previous, trace_bar }))
+        }
+      />
       <Panel
         title="Display & retention"
         subtitle="Raw pixel distance is always preserved."
@@ -1051,8 +1194,35 @@ export default function App() {
   );
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <a href="#/" className="brand">
+      {mobileMenuOpen && (
+        <button
+          className="nav-backdrop"
+          aria-label="Close navigation"
+          tabIndex={-1}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      <aside
+        id="workspace-navigation"
+        ref={menuPanel}
+        className={`sidebar ${mobileMenuOpen ? "mobile-menu-open" : ""}`}
+        role={mobileMenuOpen ? "dialog" : undefined}
+        aria-modal={mobileMenuOpen ? true : undefined}
+        aria-label={mobileMenuOpen ? "Workspace navigation" : undefined}
+      >
+        <button
+          className="mobile-menu-close icon-button"
+          aria-label="Close menu"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <X size={20} />
+        </button>
+        <a
+          href="#/"
+          className="brand"
+          aria-label="Trace overview"
+          onClick={() => setMobileMenuOpen(false)}
+        >
           <span className="brand-mark">
             <MousePointer2 size={21} />
           </span>
@@ -1064,6 +1234,8 @@ export default function App() {
             <a
               key={path}
               href={`#${path}`}
+              aria-current={route === path ? "page" : undefined}
+              onClick={() => setMobileMenuOpen(false)}
               className={route === path ? "selected" : ""}
             >
               <Icon size={17} />
@@ -1087,12 +1259,43 @@ export default function App() {
           </span>
         </div>
       </aside>
-      <div className="main">
+      <div className="main" inert={mobileMenuOpen}>
         <header className="topbar">
+          <button
+            ref={menuTrigger}
+            className="mobile-menu-button"
+            aria-label="Open menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="workspace-navigation"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu size={18} />
+            Menu
+          </button>
           <span className="breadcrumb">
             Workspace <span>/</span> <strong>{title}</strong>
           </span>
           <div className="top-actions">
+            <button
+              className="compact"
+              disabled={!nativeDesktop || !settings.trace_bar.enabled}
+              onClick={() =>
+                void invoke("show_trace_bar").catch((e) => setError(String(e)))
+              }
+            >
+              Trace Bar
+            </button>
+            <button
+              className="compact"
+              disabled={busy || !desktop || !status}
+              onClick={() =>
+                void perform(() =>
+                  call("SetIncognito", { enabled: !status?.incognito }),
+                )
+              }
+            >
+              {status?.incognito ? "Leave incognito" : "Incognito"}
+            </button>
             <span className="tracking-label">
               <i className={`status-dot ${status?.tracking ? "" : "off"}`} />
               {!desktop
@@ -1101,11 +1304,13 @@ export default function App() {
                   ? loading
                     ? "Connecting collector"
                     : "Collector disconnected"
-                  : status?.tracking
-                    ? "Tracking on"
-                    : status?.paused
-                      ? "Paused"
-                      : "Tracking off"}
+                  : status?.incognito
+                    ? "Incognito"
+                    : status?.tracking
+                      ? "Tracking on"
+                      : status?.paused
+                        ? "Paused"
+                        : "Tracking off"}
             </span>
             <div className="pause-wrap">
               <button
@@ -1165,53 +1370,55 @@ export default function App() {
                     : "Find the patterns in your everyday interaction."}
               </p>
             </div>
-            <div className="range-controls">
-              <label className="distance-unit-control">
-                <span>Distance unit</span>
+            {knownRoute && (
+              <div className="range-controls">
+                <label className="distance-unit-control">
+                  <span>Distance unit</span>
+                  <select
+                    aria-label="Distance unit"
+                    title="Choose distance and speed units"
+                    value={settings.distance_unit}
+                    disabled={busy || (desktop && !hasSettings)}
+                    onChange={(e) => void chooseDistanceUnit(e.target.value)}
+                  >
+                    {distanceUnits.map(({ unit, label }) => (
+                      <option key={unit} value={unit}>
+                        {label} ({unit})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <CalendarDays size={15} />
                 <select
-                  aria-label="Distance unit"
-                  title="Choose distance and speed units"
-                  value={settings.distance_unit}
-                  disabled={busy || (desktop && !hasSettings)}
-                  onChange={(e) => void chooseDistanceUnit(e.target.value)}
+                  aria-label="Date range"
+                  value={preset}
+                  onChange={(e) => choosePreset(e.target.value)}
                 >
-                  {distanceUnits.map(({ unit, label }) => (
-                    <option key={unit} value={unit}>
-                      {label} ({unit})
-                    </option>
-                  ))}
+                  {["Today", "Yesterday", "7 days", "30 days", "Custom"].map(
+                    (v) => (
+                      <option key={v}>{v}</option>
+                    ),
+                  )}
                 </select>
-              </label>
-              <CalendarDays size={15} />
-              <select
-                aria-label="Date range"
-                value={preset}
-                onChange={(e) => choosePreset(e.target.value)}
-              >
-                {["Today", "Yesterday", "7 days", "30 days", "Custom"].map(
-                  (v) => (
-                    <option key={v}>{v}</option>
-                  ),
-                )}
-              </select>
-              <button
-                className="icon-button"
-                title="Refresh data"
-                disabled={loading || busy}
-                onClick={() => void refresh()}
-              >
-                <RefreshCw size={15} className={loading ? "spinning" : ""} />
-              </button>
-              <button
-                disabled={busy || !desktop}
-                onClick={() => void doExport("json")}
-              >
-                <ArrowDownToLine size={14} />
-                Export
-              </button>
-            </div>
+                <button
+                  className="icon-button"
+                  title="Refresh data"
+                  disabled={loading || busy}
+                  onClick={() => void refresh()}
+                >
+                  <RefreshCw size={15} className={loading ? "spinning" : ""} />
+                </button>
+                <button
+                  disabled={busy || !desktop}
+                  onClick={() => void doExport("json")}
+                >
+                  <ArrowDownToLine size={14} />
+                  Export
+                </button>
+              </div>
+            )}
           </div>
-          {dist.estimate && route !== "/settings" && (
+          {knownRoute && dist.estimate && route !== "/settings" && (
             <p className="footnote">
               Physical units estimate cursor travel across the screen using{" "}
               {number(distanceDpi)} DPI
@@ -1221,7 +1428,7 @@ export default function App() {
               They do not measure mouse travel on your desk.
             </p>
           )}
-          {preset === "Custom" && (
+          {knownRoute && preset === "Custom" && (
             <div className="custom-range">
               <label>
                 From{" "}
@@ -1286,7 +1493,9 @@ export default function App() {
                   onClick={() =>
                     void perform(async () => {
                       await restart();
-                      const s = await call<Settings>("GetSettings");
+                      const s = normalizeSettings(
+                        await call<Settings>("GetSettings"),
+                      );
                       setSettings(s);
                       setDraft(s);
                       setHasSettings(true);
@@ -1320,13 +1529,30 @@ export default function App() {
               distance may be incomplete.
             </div>
           )}
-          {loading && !hasData ? (
+          {!knownRoute ? (
+            <Panel
+              title="We couldn't find that page"
+              subtitle="The link may be incorrect or the page may have moved."
+            >
+              <p>Your saved activity is still available.</p>
+              <a className="return-overview" href="#/">
+                Back to Overview <ArrowUpRight size={16} />
+              </a>
+            </Panel>
+          ) : loading && !hasData ? (
             <div className="loading">
               <LoaderCircle className="spinning" />
               Reading your local history…
             </div>
           ) : route === "/settings" ? (
             settingsScreen
+          ) : route === "/focus" ? (
+            <FocusPanel
+              range={range}
+              live={live}
+              settings={settings}
+              dpi={distanceDpi}
+            />
           ) : route === "/sessions" ? (
             sessions
           ) : route === "/history" ? (
@@ -1691,7 +1917,7 @@ export default function App() {
           </section>
         </div>
       )}
-      {desktop && hasSettings && !settings.onboarding_complete && (
+      {onboardingOpen && (
         <div className="modal-backdrop">
           <section
             className="modal onboarding"
@@ -1708,8 +1934,9 @@ export default function App() {
               <br />A new perspective.
             </h2>
             <p>
-              A quiet, local record of your mouse and touchpad activity. No
-              keyboard input, screen content, or cloud tracking.
+              Free to use. No account, subscription or trial. Your mouse and
+              touchpad activity stays on this PC; Trace never records typed text
+              or screen content.
             </p>
             <Toggle
               title="Enable interaction tracking"
@@ -1719,19 +1946,25 @@ export default function App() {
             />
             <Toggle
               title="Start with Windows"
-              text="Keep the collector running after login."
+              text="Optional. Start collecting after login, even with the dashboard closed."
               value={draft.launch_at_login}
               change={(v) => setDraft({ ...draft, launch_at_login: v })}
             />
             <p className="footnote">
-              Optional application analytics are not collected in this release.
+              History is saved in %LOCALAPPDATA%\Trace. Closing the dashboard
+              keeps tracking running; use the system tray to pause or quit. You
+              can export or delete history in Settings.
             </p>
             <button
               className="primary full"
               disabled={busy}
               onClick={() => void saveSettings(true)}
             >
-              {busy ? "Saving…" : "Make yourself at home"}
+              {busy
+                ? "Saving…"
+                : draft.tracking_enabled
+                  ? "Start tracking"
+                  : "Explore without tracking"}
               <ArrowUpRight size={16} />
             </button>
             {error && (

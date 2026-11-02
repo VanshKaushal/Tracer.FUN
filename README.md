@@ -1,74 +1,98 @@
 # Trace
 
-A Windows 10/11 desktop utility for local pointer interaction analytics, implemented from [prd.md](prd.md) and [trd.md](trd.md).
+Free, local mouse and trackpad activity analytics for Windows.
 
-The Rust collector and Tauri dashboard are separate executables. Closing the dashboard releases its WebView and leaves the collector running. The collector captures only pointer events; it does not read keyboard input, screen pixels, clipboard contents, URLs, window titles, or documents. The packaged desktop app has no network listener or remote analytics. Local browser development uses a loopback-only bridge to the same Windows named pipe.
+[Download for Windows](https://gettrace.pages.dev/) · [Release notes](https://github.com/VanshKaushal/Tracer.FUN/releases/tag/v0.1.0-beta.1) · [Report an issue](https://github.com/VanshKaushal/Tracer.FUN/issues)
 
-## Run
+Trace turns cursor movement, clicks, scrolling and activity sessions into a personal dashboard. A compact desktop companion, Trace Bar, keeps selected statistics close while you work. Both views share one collector and one local history.
 
-For a packaged build, keep all files from `dist` together (`trace.exe`, `trace-agent.exe` and the cross-build's `WebView2Loader.dll`) and launch `trace.exe`, or use the Windows installer in `dist`. Microsoft Edge WebView2 Runtime is required by the dashboard. Tracking and launch-at-login are initially disabled; the first-run screen asks you to enable them. The tray exposes pause/resume, dashboard/settings, and **Stop Trace completely**.
+No account, subscription or payment details are required. Activity stays on your PC.
 
-For development, install Node.js 22+ and Rust stable with the Windows MSVC toolchain, Visual Studio C++ Build Tools, Windows SDK, and WebView2 Runtime:
+## Install
 
-```powershell
+1. Open the [download page](https://gettrace.pages.dev/) and download **Trace-Windows-x64-Setup.exe**.
+2. Double-click setup and follow the installation screens.
+3. Open **Trace** from the finish screen or Start menu, then choose whether to enable tracking.
+4. Select **Trace Bar** in the dashboard header to open the bar. Customize its position and hover details in **Settings**.
+
+Users do not need Command Prompt, Node.js, Rust or Git. Setup installs for the current Windows account and handles a missing WebView2 Runtime; that step requires internet.
+
+**Beta status:** the current installer is unsigned. Windows may show an unknown publisher warning, and Application Control can block it. Do not disable device security. Trusted signing and physical-device acceptance checks remain before general availability. See [validation status](docs/validation.md).
+
+## What Trace provides
+
+- **Activity dashboard:** movement, clicks, scrolling, sessions, heatmaps, history and insights.
+- **Distance units:** pixels, millimeters, centimeters, meters, kilometers, inches, feet, yards and miles, shared across the dashboard and bar.
+- **Desktop bar:** left, right or bottom docking, configurable hover details and an expanded view with controls.
+- **Focus sessions:** start a session, review its interaction statistics and retain its history.
+- **Collection controls:** pause, resume and incognito from either view.
+- **Data control:** export JSON or CSV, delete a date range or remove recorded activity.
+
+Physical distance units estimate cursor travel across the screen using display DPI. They do not measure how far a mouse moves on a desk.
+
+## Platform support
+
+| Platform                        | Status                                                                       |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| Windows 10/11, Intel or AMD x64 | Native collector, dashboard and Trace Bar; public beta.                      |
+| macOS, Linux and Windows ARM64  | Native releases are not available.                                           |
+| Android, iOS and iPadOS         | System-wide tracking is not available.                                       |
+| Browser                         | Responsive UI preview; Windows development can connect to a local collector. |
+
+The website is the download and installation guide. Global input collection runs in the installed Windows application.
+
+## Privacy and local history
+
+- Tracking and starting with Windows are opt-in.
+- Trace records pointer activity. It does not record typed text, screenshots, clipboard contents, browsing URLs or document contents.
+- History is stored in `%LOCALAPPDATA%\Trace\trace.db` using SQLite. There are no accounts, activity uploads or cloud synchronization.
+- The database is not encrypted by Trace. Protect your Windows account and device.
+- Raw click/drag records default to 24 hours of retention; minute aggregates default to 30 days. Higher-level aggregates, sessions and heatmaps remain until deleted.
+- Updates and uninstall preserve local history. Use **Settings** to export or delete recorded activity before uninstalling if desired.
+
+Closing a view keeps the collector running when tracking is enabled. Use the system tray to pause or stop collection. Pause and incognito are shared by both views.
+
+## Develop
+
+The native app requires Windows, Node.js 22+, Rust stable with MSVC, Visual Studio C++ Build Tools, the Windows SDK and WebView2.
+
+```text
 npm ci
 npm run desktop
 ```
 
-The desktop command builds the collector sidecar before launching Tauri and Vite. To use the dashboard in your local Windows browser:
+This builds the collector sidecar and starts the Tauri application. For browser preview, testing, architecture and troubleshooting, read the [development guide](docs/DEVELOPMENT.md).
 
-```powershell
-npm run dev
-```
-
-Open `http://127.0.0.1:1420`. On Windows, the development server starts `dist/trace-agent.exe` (or the debug collector) and connects to your real local data. Enable **Enable interaction tracking** on the welcome screen, then save. If you already completed welcome with tracking off, enable it in Settings and click **Save preferences**. Use your pointer, click, and scroll; the dashboard refreshes every three seconds. Browser exports go to Downloads; allow multiple downloads for CSV. Desktop exports use a folder picker.
-
-For local testing without Rust tools, launch `dist/trace.exe` with `trace-agent.exe` and `WebView2Loader.dll` beside it. Both the browser and desktop use `%LOCALAPPDATA%\Trace\trace.db`, so they show the same history. Closing either dashboard leaves the collector running; stop it using the tray's **Stop Trace completely** action.
-
-`TRACE_BROWSER_PREVIEW=1` disables the development bridge. Non-Windows browsers and static production previews remain unconnected. The bridge exists only during `npm run dev`; publishing the static dashboard does not enable global pointer tracking on other computers. The Windows app must run locally on each user's computer.
-
-## Build and check
-
-```powershell
+```text
 npm run build
 npm test
-cargo test
-cargo run --release -p trace-agent -- --simulate
-npx playwright install chromium
-npm run test:ui
 npm run test:bridge
-npm run test:windows
-node scripts/smoke-windows.mjs --browser
-npm run installer
+npm run test:ui
+cargo test --workspace --exclude trace-desktop --locked
 ```
 
-`test:windows` requires the portable collector in `dist` and no existing collector running. It uses an isolated workspace data directory, briefly moves the pointer and returns it, and checks the real Windows hook, persistence, controls, exports and deletion. It leaves the isolated test database for inspection and stops its collector afterward. Add `--browser` as shown above to also verify the real browser connection and export download; the cached Playwright browser is required. `npm run status` reports collector status and saved settings.
+Install the Playwright browser with `npx playwright install chromium` before the first UI test run. Native smoke checks have additional requirements described in the [test plan](docs/TEST_PLAN.md).
 
-The normal Windows installer uses Tauri's current-user NSIS configuration, bundles the collector, and supports WebView2 installation. A container cross-build fallback is provided in `scripts/build-windows-container.sh`, with a simpler current-user NSIS installer in `scripts/installer.nsi`. The fallback requires an existing WebView2 Runtime. It produces both Windows executables and `dist/Trace-0.1.0-setup.exe`; it does not sign them.
+## Repository structure
 
-## Implementation
+| Path            | Contents                                                      |
+| --------------- | ------------------------------------------------------------- |
+| `apps/desktop/` | Tauri host, React dashboard and Trace Bar.                    |
+| `crates/`       | Rust collector, shared types, metrics, IPC and storage.       |
+| `migrations/`   | Versioned SQLite schema.                                      |
+| `tests/`        | Browser regression tests.                                     |
+| `scripts/`      | Development, packaging and verification tools.                |
+| `website/`      | Cloudflare Pages download website.                            |
+| `docs/`         | Development, release, architecture and validation references. |
 
-| Component       | Responsibility                                                                                                                                               |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `trace-agent`   | Minimal Win32 mouse-hook callback, bounded queue, worker, monitor enumeration, tray, startup, suspend/lock handling, local rotated logs                      |
-| `trace-core`    | Pointer types, validated settings, typed aggregate contract, calendar boundaries                                                                             |
-| `trace-metrics` | Exact transient segment distance, sampled speed, clicks/double clicks, drags, scroll bursts, active/idle sessions, dwell heatmaps, click-to-click efficiency |
-| `trace-storage` | Versioned SQLite migration, WAL, transactional batches, crash recovery, history, baselines, records, weekly totals, exports, deletion, retention             |
-| `trace-ipc`     | Bounded framed JSON over a current-user SID-scoped named pipe, user-only ACL, remote clients rejected                                                        |
-| `apps/desktop`  | React/TypeScript dashboard, ECharts, all nine routes, date/monitor/event filters, consent, settings, local export-folder selection                           |
+Generated schemas, dependencies, databases, caches and built installers are excluded from source control. Public installers are distributed through the website and GitHub Releases.
 
-Data lives at `%LOCALAPPDATA%\Trace\trace.db`. The collector flushes every ten seconds or when a buffer limit is reached. SQLite locks retain the pending batch for retry. Prolonged storage failure pauses collection before the buffer can grow without bound; the dashboard reports the error. Raw click/drag retention is 1–24 hours, enforced by a minute-level cleanup while the collector runs. Minute data expires after 7–30 days; hourly, daily, session and heatmap aggregates remain until deletion.
+## Documentation and contributions
 
-The database stores sparse typed JSON aggregates and exposes the TRD's metric columns as SQLite generated columns. Histogram bins and efficiency sums support bounded-memory historical analytics. Session-day fragments preserve unaffected activity when deleting dates from a session spanning midnight. Schema version 1 is initialized transactionally; unknown versions are rejected.
+Start with the [documentation index](docs/README.md). See [release and hosting instructions](docs/RELEASING.md) for Windows packaging and Cloudflare Pages deployment.
 
-Choose **Distance unit** beside the date filter to display cursor travel in pixels, millimeters, centimeters, meters, kilometers, inches, feet, yards, or miles. This also updates speed, drag distance, charts, session/history tables, and insights. The desktop app saves the choice automatically; it is also available in Settings under Display & retention.
+Bug reports should include the Trace version, Windows version, reproduction steps and expected behavior. Do not attach your activity database or private exports to a public issue. For code changes, follow the development guide and include relevant validation.
 
-Scroll steps are absolute native wheel delta divided by 120, with signed vertical/horizontal deltas preserved. Pixels are canonical for distance, including transitions between known monitors in the virtual desktop; physical units are labeled estimates and use display scaling DPI (96 DPI fallback for multiple displays), not measured panel dimensions or mouse travel on the desk. Speed percentiles are approximate logarithmic histogram values. Display-layout changes, sleep and resume reset movement anchors. Overload counters expose missing movement events; button events have reserved queue capacity, and a full queue is reported explicitly.
+## License
 
-Personal comparisons and statistical deviations require at least fourteen recorded baseline days. Insights describe interaction only, with no productivity or medical judgments. Optional process context, acceleration/entropy/variability analytics and more detailed per-monitor distance attribution remain future-phase features, as distinguished from MVP features in the PRD.
-
-## Release acceptance
-
-See [docs/validation.md](docs/validation.md) for checks performed in this workspace and the remaining Windows release gates. Compile success and synthetic throughput do not establish global capture accuracy, the CPU/RAM budgets, startup behavior, installer behavior, or 24–72-hour reliability on real hardware.
-
-On a Windows machine that permits execution, use `scripts/measure-collector.ps1 -DurationSeconds 60` to record CPU and memory of an already-running collector. It never starts tracking or changes your preferences. Repeat during idle, normal use, and high polling-rate input; longer durations can cover the required stability window.
+[MIT](LICENSE)

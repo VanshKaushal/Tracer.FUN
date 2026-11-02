@@ -4041,6 +4041,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4048,11 +4049,13 @@ name = "trace-desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-single-instance",
+ "trace-core",
  "trace-ipc",
  "windows-sys 0.59.0",
 ]
@@ -4073,6 +4076,7 @@ dependencies = [
 name = "trace-metrics"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "trace-core",
 ]
 

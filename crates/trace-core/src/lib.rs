@@ -1,5 +1,7 @@
 use chrono::{Local, TimeZone, Timelike};
 use serde::{Deserialize, Serialize};
+mod bar;
+pub use bar::*;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum EventType {
@@ -66,6 +68,7 @@ impl Monitor {
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Settings {
     pub launch_at_login: bool,
     pub tracking_enabled: bool,
@@ -77,6 +80,7 @@ pub struct Settings {
     pub distance_unit: String,
     pub application_tracking_enabled: bool,
     pub onboarding_complete: bool,
+    pub trace_bar: BarSettings,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -91,11 +95,13 @@ impl Default for Settings {
             distance_unit: "px".into(),
             application_tracking_enabled: false,
             onboarding_complete: false,
+            trace_bar: BarSettings::default(),
         }
     }
 }
 impl Settings {
     pub fn validate(&self) -> anyhow::Result<()> {
+        self.trace_bar.validate()?;
         anyhow::ensure!(
             (60..=1800).contains(&self.idle_threshold_seconds),
             "Idle threshold must be 1–30 minutes"
@@ -117,7 +123,8 @@ impl Settings {
             "Invalid theme"
         );
         anyhow::ensure!(
-            ["px", "mm", "cm", "m", "km", "in", "ft", "yd", "mi"].contains(&self.distance_unit.as_str()),
+            ["px", "mm", "cm", "m", "km", "in", "ft", "yd", "mi"]
+                .contains(&self.distance_unit.as_str()),
             "Invalid distance unit"
         );
         anyhow::ensure!(
@@ -247,6 +254,7 @@ pub struct RawEvent {
 }
 #[derive(Clone, Debug, Default)]
 pub struct Batch {
+    pub focus_sessions: std::collections::BTreeMap<i64, FocusSession>,
     pub minutes: std::collections::BTreeMap<i64, Stats>,
     pub heat: std::collections::BTreeMap<(i64, u16, u8, u8), HeatCell>,
     pub sessions: std::collections::BTreeMap<i64, Session>,

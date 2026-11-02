@@ -73,8 +73,10 @@ export type Settings = {
   distance_unit: string;
   application_tracking_enabled: boolean;
   onboarding_complete: boolean;
+  trace_bar: BarSettings;
 };
 export type Status = {
+  incognito?: boolean;
   tracking: boolean;
   idle: boolean;
   paused: boolean;
@@ -83,5 +85,59 @@ export type Status = {
   queue_overflows: number;
   storage_error: string | null;
   current_session: Session | null;
+};
+export type BarSettings = {
+  enabled: boolean;
+  launch_with_trace: boolean;
+  edge: "left" | "right" | "bottom";
+  monitor: string;
+  offset: number;
+  auto_collapse: boolean;
+  hide_fullscreen: boolean;
+  show_during_focus_fullscreen: boolean;
+  notifications_fullscreen: boolean;
+  show_live_timer: boolean;
+  show_clicks: boolean;
+  show_distance: boolean;
+  hover_timer: boolean;
+  hover_clicks: boolean;
+  hover_distance: boolean;
+  hover_scroll: boolean;
+  hover_active: boolean;
+  notifications: boolean;
+  personal_records: boolean;
+  focus_mode: boolean;
+};
+export type FocusSession = {
+  id: number;
+  start_ts: number;
+  end_ts: number | null;
+  updated_ts: number;
+  stats: Stats;
+  context_switches: number | null;
+};
+export type Insight = {
+  id: string;
+  priority: number;
+  title: string;
+  message: string;
+  route: string;
+  expires_ts: number;
+};
+export type LiveStats = {
+  timestamp_ms: number;
+  tracking: boolean;
+  paused: boolean;
+  paused_until: number | null;
+  incognito: boolean;
+  suspended: boolean;
+  session: Session | null;
+  today: Stats;
+  focus: FocusSession | null;
+  completed_focus: FocusSession | null;
+  settings: Settings;
+  distance_dpi: number;
+  insight: Insight | null;
+  storage_error: string | null;
 };
 export type Range = { start: string; end: string };

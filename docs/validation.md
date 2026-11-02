@@ -1,58 +1,32 @@
-# Validation and release gates
+# Validation status
 
-Local repair verification on October 3, 2026:
+Trace is an unsigned Windows x64 beta. Automated checks demonstrate the behavior listed below; they do not establish trusted publisher signing or full physical-device acceptance.
 
-- Native Windows Rust tests: 16 passed (10 metrics, 6 storage), plus 6 frontend tests, 2 named-pipe bridge tests and 5 Playwright regressions, including collector startup recovery and saved tracking consent. TypeScript and the production frontend build passed.
-- `node scripts/smoke-windows.mjs --browser` passed with an isolated database: Win32 pointer movement through the global hook, stored distance, heatmap and sessions; settings, pause/resume, JSON/CSV exports, restart persistence and date deletion. The real browser connection also passed settings toggles, pause/resume, export download and all analytics routes. Requests without bridge authorization returned 403. The overview screenshot was inspected at 1440 pixels.
-- Found the existing collector's worker had stopped while its IPC thread remained alive. Its maintenance timers subtracted 24 hours from `Instant::now()` on a machine with approximately 3.5 hours of uptime. Maintenance now uses an initially absent timestamp, avoiding that startup panic. Worker panics are logged and close the collector; a disconnected worker has a distinct IPC error.
-- Desktop startup now waits for collector readiness and surfaces missing executables, launch failures and early exits. Settings retry on later dashboard refreshes, and the dashboard refreshes every three seconds. The Windows development browser connects through a token-protected loopback bridge; static production builds contain no bridge token or endpoint.
-- Refreshed the portable Windows executables, WebView2 loader, NSIS installer and SHA256SUMS. Launching the final desktop executable started a healthy collector on the existing user database: no storage error or queue overflow, with the original first-run tracking consent still disabled. The local browser server was then started for user testing.
-- Saving unrelated preferences no longer changes Windows startup registration. The isolated smoke test leaves real user data and startup preferences untouched. Deletion is tested while paused to prevent newly tracked time from recreating the selected day.
+## Recorded release checks
 
-Windows Application Control still blocks some native **release-build helper executables** (OS error 4551), so release builds use the prepared Linux/MinGW container. Native debug tests and the cross-built collector execute successfully on this host. Installer lifecycle and long-duration release acceptance still require the checks below.
+| Check                                                     | Evidence                                                                                                                                  |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Native MSVC build and NSIS package                        | [Windows build](https://github.com/VanshKaushal/Tracer.FUN/actions/runs/41092322986), including frontend, bridge, browser and Rust tests. |
+| Public setup, both windows, collector startup and consent | [Installer lifecycle](https://github.com/VanshKaushal/Tracer.FUN/actions/runs/41098118856) on a disposable Windows runner.                |
+| Running upgrade, uninstall and history recovery           | The same installer lifecycle run verifies retained preferences and focus history, and removal of both executables.                        |
+| Cloudflare-hosted public installer                        | [Cloudflare installer check](https://github.com/VanshKaushal/Tracer.FUN/actions/runs/41520117325), with the pinned release checksum.      |
+| Website delivery and mobile layout                        | Anonymous HTTP checks, branded HTTP 404, 320/1440 px browser checks and one-click download integrity verified on November 3, 2026.        |
+| Populated dashboard and hover layouts                     | Browser coverage includes 320/430/768 px analytics routes and left/right/bottom hover details.                                            |
 
-## Earlier baseline checks
+The released setup is `Trace-Windows-x64-Setup.exe`, 5,059,300 bytes, SHA-256:
 
-Completed source checks on October 3, 2026:
+```text
+1f8413ce9e78b4ae6b795c93e3447efdddb10eefee93fb35c099612538df08f8
+```
 
-| Check                                                          | Observed result                                                                                                               |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Rust tests in Linux with `TZ=Asia/Kolkata`                     | 16 passed: 10 metrics tests and 6 storage/integration tests                                                                   |
-| Strict Windows-target collector/storage/IPC and desktop Clippy | Passed with `-D warnings`                                                                                                     |
-| React/TypeScript production build                              | Passed; the ECharts chunk is approximately 600 KB before compression and triggers Vite's size advisory                        |
-| Frontend metric tests                                          | 6 passed                                                                                                                      |
-| Playwright browser tests                                       | 4 passed, including a mocked Tauri transport test for out-of-order range results and pause/resume                             |
-| npm dependency audit                                           | Zero reported vulnerabilities                                                                                                 |
-| Synthetic million-event computation run                        | Approximately 0.39 seconds in the container                                                                                   |
-| Simulated 72-hour continuous session                           | Passed daily totals, session continuity, exact distance and bounded-buffer assertions; simulated time, not a real 72-hour run |
-| Windows binary execution on host                               | Previously blocked; superseded by the successful live Windows smoke check above                                                |
+Run current source checks using the commands in [Development](DEVELOPMENT.md). Read the [test plan](TEST_PLAN.md) before native smoke checks, which can move the pointer and have collector-instance requirements. Historical numbers are recorded evidence, not claims that every prior check was rerun for a documentation-only change.
 
-The final x86_64 Windows GNU release build and NSIS packaging completed successfully. `dist` contains `trace.exe`, `trace-agent.exe`, `WebView2Loader.dll`, and the approximately 3.18 MB `Trace-0.1.0-setup.exe`. The installer compiled without NSIS warnings. These are unsigned development artifacts; install/launch behavior has not been validated on this host.
+## Remaining general-availability checks
 
-The preview regression uses empty data and the Tauri transport regression uses a test-only mock. The additional Windows smoke check above exercises real collection and the browser bridge.
+- Trusted Windows publisher signatures for the setup, dashboard host and collector.
+- Physical Windows 10/11 installation, upgrade, uninstall and startup, including a machine without WebView2.
+- Multiple monitors, negative coordinates, mixed DPI, display removal and taskbar changes.
+- Fullscreen applications, focus behavior, sleep/resume, lock/unlock and cross-midnight collection.
+- Measured CPU, memory, disk growth and sustained 8-/24-hour behavior with real input devices.
 
-## Automated coverage
-
-- Geometry, circular direction differences, negative monitor coordinates and normalized heatmap bounds.
-- High-rate distance accumulation with sampled speed updates; click pairs, completed drags, native scrolling and wheel bursts.
-- Active/idle transitions, session restart, movement anchor resets after sleep/clock jumps, queued timestamps and monitor changes.
-- Calendar-minute splitting and cross-midnight active sessions in Asia/Kolkata.
-- WAL persistence/reopen, unfinished-session recovery, CSV exports, raw/minute retention while hourly data remains.
-- Transaction rollback, temporary SQLite locking and pending-batch retry.
-- Date-range deletion preserving outside-day session fragments and removing matching heatmap cells.
-- Distance across adjacent known monitors, display reconfiguration, and a simulated three-day active session.
-- UI metric semantics, estimates, weighted speed aggregation, calendar range rollover and baseline eligibility.
-- Browser navigation through all nine routes, preview privacy/disabled export, custom dates, click filters and compact settings layout.
-- A synthetic one-million-event metrics run. This benchmark measures computation throughput, not operating-system hook overhead or steady-state CPU.
-
-## Windows acceptance still required
-
-1. Install on Windows 10/11 with and without WebView2 already present; verify uninstall and upgrade with the collector running.
-2. Grant tracking consent; verify known counts for rapid left/right/middle clicks, double clicks, drags and both wheel axes using real devices.
-3. Enable startup, log out/in, and verify the collector starts without a dashboard. Close the dashboard and verify data continues accumulating.
-4. Test all pause durations, resume, settings, CSV/JSON export, selected-range and all-data deletion.
-5. Suspend overnight, resume, lock/unlock, move between negative-coordinate monitors, disconnect displays, change DPI/resolution, and adjust the system clock.
-6. Measure collector working set (<30 MB), idle CPU (<0.2%), normal CPU (<1%), and overload CPU/backlog at 1,000 events/s. Measure today-query latency (<1 second).
-7. Run for 24–72 hours across midnight while observing memory, CPU, disk growth, sessions, retention, hook availability and restart after abrupt termination.
-
-These are release gates, not claimed passing results. Live tracking was enabled temporarily only in isolated smoke-test databases; real-user tracking consent and startup settings were preserved. The cross-build's dashboard DLL imports include `WebView2Loader.dll`; the portable folder and fallback installer bundle the x64 loader supplied by the WebView2 dependency. The full WebView2 Runtime must already be installed for that fallback installer.
+The [detailed test plan](TEST_PLAN.md) defines acceptance targets. Simulated event workloads and browser mocks do not replace hardware measurements. The [validation archive](archive/validation-history.md) preserves dated execution results, local runtime repairs and superseded build/hosting details.
