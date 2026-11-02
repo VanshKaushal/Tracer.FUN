@@ -1,4 +1,6 @@
-# Free launch readiness
+> Historical launch audit. See [release and hosting instructions](../RELEASING.md) and [current validation status](../validation.md) for the maintained workflow. The checklist below records the original launch review.
+
+# Launch audit
 
 Trace's current release is entirely free: no billing, accounts, trials or mandatory analytics. The native product currently supports Windows 10/11 x64. A responsive website does not make global tracking available on phones, macOS or Linux.
 

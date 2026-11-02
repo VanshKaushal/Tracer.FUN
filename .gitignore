@@ -5,6 +5,7 @@ node_modules/
 /.browser-cache/
 /apps/desktop/dist/
 /apps/desktop/src-tauri/binaries/
+/apps/desktop/src-tauri/gen/
 *.db
 *.db-shm
 *.db-wal
@@ -14,4 +15,11 @@ node_modules/
 /.trace-smoke-*/
 /.trace-bar-smoke-*/
 /.launch-site/
+/.wrangler/
+/start-trace.cmd
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
 

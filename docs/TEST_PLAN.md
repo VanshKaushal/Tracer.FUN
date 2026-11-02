@@ -22,7 +22,7 @@ Hardware release checklist:
 1. Start the portable Windows app; verify the bar appears and is above ordinary windows, absent from the taskbar, and independent of the dashboard.
 2. Drag to left/right/bottom edges and between monitors with different DPI; confirm the snap threshold, offset persistence, and no accidental button activation during dragging.
 3. Change resolution, scaling, and taskbar placement; disconnect/reconnect displays and test laptop docking. Confirm a removed monitor falls back to the primary working area.
-4. Confirm hover does not take focus from another app; clicking Expanded enables Tab/Enter; Escape collapses. Confirm 5-second/3-second collapse and Compact persistence during focus.
+4. Confirm hover does not take focus from another app; clicking Expanded enables Tab/Enter; Escape collapses. With auto-collapse enabled, verify the expanded view's five-second delay, the hover view remaining visible under the pointer and its 120-millisecond collapse after leaving. Confirm Compact persistence during focus.
 5. Check fullscreen games, video, presentations, and the opt-in overrides. Verify the bar reappears afterward.
 6. Close each UI separately, disable the bar completely, reopen from the tray, and confirm the collector continues. Stop/crash the collector and verify a persistent unavailable state, reconnect backoff, and explicit restart.
 7. Exercise sleep/resume, lock/unlock, midnight, manual focus, privacy boundaries, and all pause durations with physical input devices.
