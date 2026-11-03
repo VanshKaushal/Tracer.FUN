@@ -5,26 +5,92 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="Meet Trace: free, private mouse activity insights for Windows. A personal dashboard and a quiet desktop bar. No account or subscription."
+      content="Trace is a free mouse activity tracker for Windows 10 and 11. Measure cursor distance, explore click heatmaps and use Trace Bar. History stays on your PC."
     />
     <meta name="theme-color" content="#11140f" />
-    <meta property="og:title" content="Trace — your day, in motion" />
+    <meta
+      property="og:title"
+      content="Trace — free mouse activity tracker for Windows"
+    />
     <meta
       property="og:description"
       content="A free Windows dashboard and desktop bar for your mouse activity. Your history stays on your PC."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Trace" />
     <meta
-      property="og:url"
-      content="https://gettrace.pages.dev/"
+      property="og:image"
+      content="https://gettrace.pages.dev/social-preview.png"
     />
-    <link
-      rel="canonical"
-      href="https://gettrace.pages.dev/"
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Trace: free mouse activity tracking for Windows, with a dashboard and Trace Bar. Interface illustration with sample data."
     />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Trace — free mouse activity tracker for Windows"
+    />
+    <meta
+      name="twitter:description"
+      content="Cursor distance, click heatmaps and a quiet desktop bar. Free Windows beta. History stays on your PC."
+    />
+    <meta
+      name="twitter:image"
+      content="https://gettrace.pages.dev/social-preview.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Trace dashboard and Trace Bar illustration with sample data."
+    />
+    <meta property="og:url" content="https://gettrace.pages.dev/" />
+    <link rel="canonical" href="https://gettrace.pages.dev/" />
     <link rel="icon" type="image/svg+xml" href="/trace.svg" />
     <link rel="stylesheet" href="/style.css" />
-    <title>Trace — free, private mouse activity insights for Windows</title>
+    <title>Trace — Free Mouse Activity Tracker for Windows</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://gettrace.pages.dev/#website",
+            "url": "https://gettrace.pages.dev/",
+            "name": "Trace",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://gettrace.pages.dev/#app",
+            "name": "Trace",
+            "url": "https://gettrace.pages.dev/",
+            "description": "Free mouse activity tracker for Windows with cursor distance, click heatmaps, local history and Trace Bar.",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Windows 10, Windows 11 (Intel and AMD x64)",
+            "softwareVersion": "0.1.0-beta.1",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "url": "https://gettrace.pages.dev/#download"
+            },
+            "downloadUrl": "https://gettrace.pages.dev/downloads/Trace-Windows-x64-Setup.exe",
+            "license": "https://github.com/VanshKaushal/Tracer.FUN/blob/feat/trace-bar-hover-focus/LICENSE",
+            "sameAs": ["https://github.com/VanshKaushal/Tracer.FUN"],
+            "featureList": [
+              "Cursor distance in nine units",
+              "Click heatmaps",
+              "Local activity history",
+              "Configurable Trace Bar",
+              "Export and delete recorded activity"
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -36,7 +102,7 @@
       >
       <nav class="desktop-nav" aria-label="Main navigation">
         <a href="#experience">The experience</a><a href="#privacy">Privacy</a
-        ><a href="#questions">Questions</a>
+        ><a href="#questions">Questions</a><a href="/guides/">Guides</a>
       </nav>
       <a class="button small" href="#download"
         >Get Trace free <span aria-hidden="true">↗</span></a
@@ -45,7 +111,7 @@
         <summary>Menu</summary>
         <nav aria-label="Mobile navigation">
           <a href="#experience">The experience</a><a href="#privacy">Privacy</a
-          ><a href="#questions">Questions</a>
+          ><a href="#questions">Questions</a><a href="/guides/">Guides</a>
         </nav>
       </details>
     </header>
@@ -53,10 +119,13 @@
       <section class="hero wrap">
         <div class="intro">
           <p class="eyebrow"><span class="dot"></span> FREE WINDOWS BETA</p>
-          <h1>Your day,<br />in <em>motion.</em></h1>
+          <h1 class="product-heading">
+            Free mouse activity tracker<br /><em>for Windows.</em>
+          </h1>
           <p class="lede">
-            Every click has a rhythm. Get a little perspective on yours, with a
-            personal activity dashboard and a quiet desktop bar.
+            Measure cursor distance, explore click heatmaps and review your
+            activity history. Keep a little of that picture close with Trace
+            Bar. Your history stays on your PC.
           </p>
           <a class="button" href="#download"
             >Download for Windows <span aria-hidden="true">↓</span></a
@@ -257,6 +326,15 @@
         <p class="eyebrow">A FEW USEFUL ANSWERS</p>
         <h2>Before your first click.</h2>
         <details>
+          <summary>What is Trace?</summary>
+          <p>
+            Trace is a free mouse activity tracker for Windows 10 and 11 on
+            Intel and AMD x64 PCs. It shows cursor distance, clicks, scrolling,
+            activity sessions and heatmaps in a dashboard, with a separate Trace
+            Bar for quick access. The current release is an unsigned beta.
+          </p>
+        </details>
+        <details>
           <summary>Is Trace really free?</summary>
           <p>
             Yes. All features in this release are free, with no account, payment
@@ -308,6 +386,33 @@
           </p>
         </details>
       </section>
+      <section class="wrap resources" aria-labelledby="guides-title">
+        <p class="eyebrow">GET COMFORTABLE WITH TRACE</p>
+        <h2 id="guides-title">A few useful guides.</h2>
+        <div class="guide-grid">
+          <a class="guide-card" href="/guides/install-trace/"
+            ><h3>Install Trace on Windows</h3>
+            <p>
+              Download, setup, first launch and help with a blocked installer.
+            </p>
+            <span>Read the installation guide →</span></a
+          >
+          <a class="guide-card" href="/guides/mouse-distance/"
+            ><h3>Understand cursor distance</h3>
+            <p>
+              Choose your unit and learn what a screen-distance estimate means.
+            </p>
+            <span>Read the distance guide →</span></a
+          >
+          <a class="guide-card" href="/guides/heatmaps-and-privacy/"
+            ><h3>Heatmaps, history and privacy</h3>
+            <p>
+              Understand the charts, where history lives and how to delete it.
+            </p>
+            <span>Read the privacy guide →</span></a
+          >
+        </div>
+      </section>
     </main>
     <footer class="wrap">
       <a class="brand" href="/" aria-label="Trace home"
@@ -317,7 +422,7 @@
       >
       <p>© <span id="year">2026</span> Trace · Free Windows beta</p>
       <nav aria-label="Footer">
-        <a href="#privacy">Privacy</a
+        <a href="/guides/">Guides</a><a href="#privacy">Privacy</a
         ><a href="https://github.com/VanshKaushal/Tracer.FUN/issues">Support</a
         ><a
           href="https://github.com/VanshKaushal/Tracer.FUN/tree/feat/trace-bar-hover-focus"

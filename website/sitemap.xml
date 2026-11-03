@@ -1,2 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gettrace.pages.dev/</loc></url></urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://gettrace.pages.dev/</loc></url>
+  <url><loc>https://gettrace.pages.dev/guides/</loc></url>
+  <url><loc>https://gettrace.pages.dev/guides/install-trace/</loc></url>
+  <url><loc>https://gettrace.pages.dev/guides/mouse-distance/</loc></url>
+  <url><loc>https://gettrace.pages.dev/guides/heatmaps-and-privacy/</loc></url>
+</urlset>
