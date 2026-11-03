@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#11140f"/>
+  <circle cx="1090" cy="50" r="350" fill="#1a2314"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <rect x="64" y="62" width="52" height="52" rx="14" fill="#b6e77d"/>
+    <path d="M78 76L101 85L90 89L87 100Z" stroke="#253416" stroke-width="3" fill="none" stroke-linejoin="round"/>
+    <text x="132" y="101" fill="#f0f2e9" font-size="44" font-weight="700">trace</text>
+    <text x="64" y="190" fill="#b6e77d" font-size="17" letter-spacing="3">FREE WINDOWS BETA</text>
+    <text x="64" y="258" fill="#f0f2e9" font-size="53" font-weight="600"><tspan x="64">Your mouse activity.</tspan><tspan x="64" dy="65">A clearer picture.</tspan></text>
+    <text x="64" y="385" fill="#bac3ae" font-size="23"><tspan x="64">Cursor distance. Click heatmaps.</tspan><tspan x="64" dy="36">A quiet desktop bar.</tspan></text>
+    <text x="64" y="516" fill="#b6e77d" font-size="21">Free to use. History stays on your PC.</text>
+    <text x="64" y="565" fill="#a3aa96" font-size="19">gettrace.pages.dev</text>
+    <rect x="675" y="125" width="461" height="352" rx="16" fill="#0d100b" stroke="#465139"/>
+    <circle cx="699" cy="151" r="5" fill="#b6e77d"/><text x="714" y="157" fill="#e2e8d8" font-size="16">Trace dashboard</text>
+    <path d="M675 175H1136" stroke="#303627"/>
+    <text x="701" y="214" fill="#a3aa96" font-size="15">CURSOR DISTANCE</text>
+    <text x="700" y="263" fill="#f0f2e9" font-size="39">482 <tspan font-size="21" fill="#a3aa96">m</tspan></text>
+    <text x="701" y="289" fill="#a3aa96" font-size="13">Estimated screen distance</text>
+    <path d="M701 324H1108M701 365H1108M701 406H1108" stroke="#303627" fill="none"/>
+    <path d="M701 420L727 405L750 412L777 355L803 380L830 334L857 368L884 390L911 348L939 317L967 350L995 335L1023 377L1051 365L1080 403L1108 388V441H701Z" fill="#b6e77d" fill-opacity=".1"/>
+    <path d="M701 420L727 405L750 412L777 355L803 380L830 334L857 368L884 390L911 348L939 317L967 350L995 335L1023 377L1051 365L1080 403L1108 388" stroke="#b6e77d" stroke-width="3" fill="none" stroke-linejoin="round"/>
+    <rect x="736" y="453" width="339" height="62" rx="31" fill="#070a06" stroke="#465139"/>
+    <circle cx="761" cy="484" r="5" fill="#b6e77d"/>
+    <text x="779" y="491" fill="#f0f2e9" font-size="20">24m</text><text x="840" y="491" fill="#a3aa96" font-size="17">184 clicks</text><text x="958" y="491" fill="#a3aa96" font-size="17">48 m</text>
+    <text x="905" y="552" fill="#a3aa96" font-size="13" text-anchor="middle">Interface illustration · sample data</text>
+  </g>
+</svg>

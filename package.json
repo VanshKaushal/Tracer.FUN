@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "site:build": "node scripts/build-download-site.mjs",
+    "site:preview-image": "node scripts/render-site-preview.mjs",
     "dev": "vite --config apps/desktop/vite.config.ts",
     "test:bridge": "node --test scripts/local-collector.test.mjs",
     "test:windows": "node scripts/smoke-windows.mjs",

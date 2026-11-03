@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildGuides } from "./build-site-guides.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const filename = "Trace-Windows-x64-Setup.exe";
@@ -48,9 +49,14 @@ for (const file of [
   "_headers",
   "robots.txt",
   "sitemap.xml",
+  "social-preview.png",
+  "social-preview.svg",
 ]) {
-  cpSync(resolve(root, "website", file), resolve(output, file));
+  cpSync(resolve(root, "website", file), resolve(output, file), {
+    recursive: true,
+  });
 }
+buildGuides(output);
 writeFileSync(resolve(output, "downloads", filename), installer);
 writeFileSync(
   resolve(output, "downloads/SHA256SUMS.txt"),

@@ -2,12 +2,13 @@
 
 ## Start here
 
-| Guide                                 | Contents                                                                      |
-| ------------------------------------- | ----------------------------------------------------------------------------- |
-| [Development](DEVELOPMENT.md)         | Windows setup, local development, architecture, commands and troubleshooting. |
-| [Releasing and hosting](RELEASING.md) | Windows packages, installer verification and Cloudflare Pages deployment.     |
-| [Validation status](validation.md)    | Verified release checks and remaining hardware acceptance work.               |
-| [Release notes](RELEASE_NOTES.md)     | Current public beta and its limitations.                                      |
+| Guide                                     | Contents                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------- |
+| [Development](DEVELOPMENT.md)             | Windows setup, local development, architecture, commands and troubleshooting. |
+| [Releasing and hosting](RELEASING.md)     | Windows packages, installer verification and Cloudflare Pages deployment.     |
+| [Validation status](validation.md)        | Verified release checks and remaining hardware acceptance work.               |
+| [Release notes](RELEASE_NOTES.md)         | Current public beta and its limitations.                                      |
+| [Website search and AI discovery](SEO.md) | SEO/GEO implementation, content maintenance and Search Console setup.         |
 
 ## Implementation references
 
