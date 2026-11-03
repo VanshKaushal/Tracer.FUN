@@ -23,7 +23,7 @@ The preview's editable source is `website/social-preview.svg`. After changing it
 3. Submit `https://gettrace.pages.dev/sitemap.xml` in the Sitemaps section.
 4. Inspect the homepage and guide URLs with URL Inspection. Request indexing where appropriate, then check indexing errors and the Performance report over time.
 
-Ownership verification and submission require the owner's Google account. Publishing a sitemap does not establish that it was submitted, that Google indexed the site, or that it will rank. No Search Console property or verification was created as part of the source changes.
+The homepage retains Google's public HTML verification tag for the owner's URL-prefix property. Keep this tag in future deployments so Google can recheck ownership. Verification and sitemap submission require the owner's Google account; check Search Console for their current status. Publishing a sitemap does not establish that Google indexed the site or that it will rank. The verification tag is not an analytics script and does not collect website visits or desktop activity.
 
 ## Measurement and limits
 
